@@ -65,7 +65,7 @@ extern "C" SEXP LC_CoxPH(SEXP R_L, SEXP R_R, SEXP R_x,
 	int num_cov = INTEGER(dims)[1];
 	int cov_n = INTEGER(dims)[0];
 	UNPROTECT(1);
-	
+
 	if(cov_n != n){
 		Rprintf("Number of covariates does not match number of observations\n");
 		return(R_NilValue);
@@ -83,7 +83,6 @@ extern "C" SEXP LC_CoxPH(SEXP R_L, SEXP R_R, SEXP R_x,
 	for(int i = 0; i < ak; i++)	
 		actInds[i] = INTEGER(R_actInds)[i] - 1;
 	
-	
 	double augl = REAL(AugL)[0];
 	double augr = REAL(AugR)[0];
 
@@ -99,7 +98,7 @@ extern "C" SEXP LC_CoxPH(SEXP R_L, SEXP R_R, SEXP R_x,
 	optObj.VEMstep();	
 	optObj.ICMstep();
 	
-//	double old_llk = -R_PosInf;
+//	double old_llk = R_NegInf;
 		
 //	double new_llk = optObj.llk();
 	
@@ -108,7 +107,6 @@ extern "C" SEXP LC_CoxPH(SEXP R_L, SEXP R_R, SEXP R_x,
 	int max_inner_its = 20;
 	int max_outer_its = 100;
 	
-		
 	double outer_tol = pow(10.0, -10);
 	double inner_tol = pow(10.0, -12);
 	double outer_error = outer_tol + 1;
@@ -117,7 +115,7 @@ extern "C" SEXP LC_CoxPH(SEXP R_L, SEXP R_R, SEXP R_x,
 	double inner_llk, outer_llk;
 	int loopcount = 0;
 	bool start_move_x = false;
-	while( (outer_it < max_outer_its) && ( (outer_error > outer_tol) || (loopcount < 2))){
+	while( (outer_it < max_outer_its)  && (loopcount < 2)){
 		outer_it++;
 		outer_llk = optObj.llk();
 		optObj.VEMstep();
@@ -141,7 +139,7 @@ extern "C" SEXP LC_CoxPH(SEXP R_L, SEXP R_R, SEXP R_x,
 		optObj.recenterBeta();
 		outer_error = optObj.llk() - outer_llk;	
 		if(outer_error != outer_error){
-			Rprintf("Warning: undefined error. Algorithm terminated at invalid estimate\n");
+			Rprintf("Warning: undefined error. Algorithm terminated at invalid estimate. Please contact Clifford Anderson-Bergman with this dataset!\n");
 			break;
 		}
 		if(outer_error < 0.0001)
@@ -167,12 +165,15 @@ extern "C" SEXP LC_CoxPH(SEXP R_L, SEXP R_R, SEXP R_x,
 		REAL(x_out)[i] = optObj.x[optObj.actIndex[i]];
 		REAL(b_out)[i] = optObj.b[optObj.actIndex[i]];
 	}
-	SEXP Hess_out = PROTECT(allocMatrix(REALSXP, num_cov, num_cov));
-	for(int i = 0; i < num_cov; i++){
-		for(int j = 0; j < num_cov; j++)
-			REAL(Hess_out)[i + num_cov*j] = optObj.Hess_b[i][j];
+	int totValues = num_cov + ak;
+
+	SEXP Hess_out = PROTECT(allocMatrix(REALSXP, totValues, totValues));
+	for(int i = 0; i < totValues; i++){
+		for(int j = 0; j <= i; j++){
+			REAL(Hess_out)[i + totValues * j] = optObj.partialDerCovOrBase(i,j);
+			REAL(Hess_out)[j + totValues * i] = REAL(Hess_out)[i + totValues* j];
+		}
 	}
-	
 	REAL(llk_out)[0] = optObj.llk();
 	SET_VECTOR_ELT(output, 0, x_out);
 	SET_VECTOR_ELT(output, 1, b_out);
@@ -182,7 +183,6 @@ extern "C" SEXP LC_CoxPH(SEXP R_L, SEXP R_R, SEXP R_x,
 	UNPROTECT(6);
 	return(output);
 }
-
 LogConCenPH::LogConCenPH(int MoveX, 
 				   	vector<double> X, 
 				   	vector<double> B, 
@@ -234,9 +234,8 @@ double LogConCenPH::llk(){
 	int k = x.size();
 	double db;
 	s[0] = 0;
-//	double der;
-	if(x[0] > -R_PosInf){
-		if(b[1] == -R_PosInf || b[0] == -R_PosInf){
+	if(x[0] > R_NegInf){
+		if(b[1] == R_NegInf || b[0] == R_NegInf){
 				s[1] = s[0];
 			} else {
 			db = b[1] - b[0];
@@ -246,19 +245,19 @@ double LogConCenPH::llk(){
 				s[1] = dx[0]/db * (exp(b[1]) - exp(b[0]) ); 
 		}
 	}
-	if(x[0] == -R_PosInf){
-		if(b[1] == -R_PosInf){
+	if(x[0] == R_NegInf){
+		if(b[1] == R_NegInf){
 			s[1] = 0;
 		} else {
 			db = (b[2] - b[1]) / dx[1];
 			if(db <= 0){
-				return(-R_PosInf);
+				return(R_NegInf);
 			}
 			s[1] = exp(b[1])/db;
 			}
 		}
 	for(int i = 1; i < k-2; i++){
-		if(b[i+1] == -R_PosInf || b[i] == -R_PosInf){
+		if(b[i+1] == R_NegInf || b[i] == R_NegInf){
 			s[i+1] = s[i];
 			continue;
 		} 
@@ -269,7 +268,7 @@ double LogConCenPH::llk(){
 			s[i+1] = s[i] + dx[i]/db * (exp(b[i+1]) - exp(b[i]) ); 				
 		}
 	if(x[k-1] < R_PosInf){
-		if(b[k-1] == -R_PosInf || b[k-2] == -R_PosInf){
+		if(b[k-1] == R_NegInf || b[k-2] == R_NegInf){
 			s[k-1] = s[k-2];
 			} 
 		else{
@@ -281,13 +280,13 @@ double LogConCenPH::llk(){
 			}
 		}
 	if(x[k-1] == R_PosInf){
-		if(b[k-2] == -R_PosInf){
+		if(b[k-2] == R_NegInf){
 			s[k-1] = s[k-2];
 			}	 
 		else {
 			db = (b[k-2] - b[k-3]) / dx[k-3];//(x[k-2] - x[k-3]);
 			if(db >= 0){
-				return(-R_PosInf);
+				return(R_NegInf);
 			}
 			s[k-1] = s[k-2] - exp(b[k-2])/db;
 		}					
@@ -318,15 +317,15 @@ double LogConCenPH::llk(){
 		p_ob  =  pow(1-s[lo_ind], nu[i]) - pow(1-s[hi_ind], nu[i]);
 					
 		if(p_ob == 0) {
-			 return(-R_PosInf);
+			 return(R_NegInf);
 		}
 		log_sum = log_sum + log(p_ob);
 	}
-	if(log_sum == R_PosInf || log_sum == -R_PosInf){
-		return(-R_PosInf);
+	if(log_sum == R_PosInf || log_sum == R_NegInf){
+		return(R_NegInf);
 	}
 	if(log_sum != log_sum){
-		return(-R_PosInf);
+		return(R_NegInf);
 	}
 	return (log_sum);
 }
@@ -356,15 +355,15 @@ double LogConCenPH::nullk(){
 		}
 		p_ob  =  pow(1-s[lo_ind], nu[i]) - pow(1-s[hi_ind], nu[i]);
 		if(!(p_ob > 0) ) {
-			 return(-R_PosInf);
+			 return(R_NegInf);
 		}
 		log_sum += log(p_ob);
 	}
-	if(log_sum == R_PosInf || log_sum == -R_PosInf){
-		return(-R_PosInf);
+	if(log_sum == R_PosInf || log_sum == R_NegInf){
+		return(R_NegInf);
 	}
 	if(log_sum != log_sum){
-		return(-R_PosInf);
+		return(R_NegInf);
 	}
 	return (log_sum);
 }
@@ -452,12 +451,12 @@ double LogConCenPH::updateRegress(){
 		decompOK = QuadProgPP::cholesky_decomposition_safe(test_Hess_b);
 	}
 	if(decompOK == false){
-		Rprintf("warning: Hessian for covariates not positive definite\n");
+	//	Rprintf("warning: Hessian for covariates not positive definite\n");
 		return(1.0);
 	}
 	cholesky_solve(test_Hess_b, propStep, cov_b_d);
 	if(propStep[0] != propStep[0]){
-		Rprintf("warning: propstep undefined\n");
+	//	Rprintf("warning: propstep undefined\n");
 		return(1.0);
 	}
 	for (int i = 0; i < cov_b_d.size(); i++)
@@ -492,8 +491,8 @@ void LogConCenPH::update_p(int index1, int index2){
 	p[0] = 0;
 	double slp = (b[index2] - b[index1])/(x[index2] - x[index1]);
 	if(index1 == 0){
-		if(x[0] > -R_PosInf){
-		if(b[1] == -R_PosInf || b[0] == -R_PosInf){
+		if(x[0] > R_NegInf){
+		if(b[1] == R_NegInf || b[0] == R_NegInf){
 				p[1] = 0;
 			} else {
 			double db = b[1] - b[0];
@@ -503,8 +502,8 @@ void LogConCenPH::update_p(int index1, int index2){
 				p[1] = 1/slp * (exp(b[1]) - exp(b[0]) ); 
 		}
 	}
-	if(x[0] == -R_PosInf){
-		if(b[1] == -R_PosInf){
+	if(x[0] == R_NegInf){
+		if(b[1] == R_NegInf){
 			p[1] = 0;
 		} else {
 			double db = (b[2] - b[1]) / dx[1];
@@ -524,7 +523,7 @@ void LogConCenPH::update_p(int index1, int index2){
 	
 	if(index2 == k-1){
 		if(x[k-1] < R_PosInf){
-			if(b[k-1] == -R_PosInf || b[k-2] == -R_PosInf){
+			if(b[k-1] == R_NegInf || b[k-2] == R_NegInf){
 				p[k-1] = 0;
 				} 
 			else{
@@ -536,7 +535,7 @@ void LogConCenPH::update_p(int index1, int index2){
 				}
 			}
 		if(x[k-1] == R_PosInf){
-			if(b[k-2] == -R_PosInf)
+			if(b[k-2] == R_NegInf)
 				p[k-1] = 0;
 			else {
 				double db = (b[k-2] - b[k-3]) / dx[k-3];//(x[k-2] - x[k-3]);
@@ -581,15 +580,15 @@ double LogConCenPH::fastBasellk(){
 		p_ob  =  pow(1-s[lo_ind], nu[i]) - pow(1-s[hi_ind], nu[i]);
 					
 		if(p_ob == 0) {
-			 return(-R_PosInf);
+			 return(R_NegInf);
 		}
 		log_sum += log(p_ob);
 	}
-	if(log_sum == R_PosInf || log_sum == -R_PosInf){
-		return(-R_PosInf);
+	if(log_sum == R_PosInf || log_sum == R_NegInf){
+		return(R_NegInf);
 	}
 	if(log_sum != log_sum){
-		return(-R_PosInf);
+		return(R_NegInf);
 	}
 	return (log_sum);
 }
@@ -620,5 +619,40 @@ void LogConCenPH::fastNumActDers(){
 			allActDervs[i] = (llk_h-llk_l)/(h_fast);
 		}
 	}
+}
+
+void LogConCenPH::moveCovOrBase(int i, double delta){
+	int numCov = cov_b.size();
+	if(i < numCov){
+		cov_b[i] = cov_b[i] + delta;
+		updateNu();
+		return;
+	}
+	int ind = actIndex[i - numCov];
+	move_act_b(ind, delta);
+}
+
+double LogConCenPH::partialDerCovOrBase(int i, int j){
+	if(i == j){
+		moveCovOrBase(i, h);
+		double lk_h = llk();
+		moveCovOrBase(i, -2*h);
+		double lk_l = llk();
+		moveCovOrBase(i, h);
+		double lk_0 = llk();
+		return(	(lk_h + lk_l - 2 * lk_0) / (h*h) );
+	}
+	moveCovOrBase(i, h);
+	moveCovOrBase(j, h);
+	double lk_hh = llk();
+	moveCovOrBase(i, -2*h);
+	double lk_lh = llk();
+	moveCovOrBase(j, -2*h);
+	double lk_ll = llk();
+	moveCovOrBase(i, 2*h);
+	double lk_hl = llk();
+	moveCovOrBase(i, -h);
+	moveCovOrBase(j, h);
+	return( (lk_hh + lk_ll - lk_hl - lk_lh) / (4*h*h) );
 }
 

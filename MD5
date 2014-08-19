@@ -1,6 +1,6 @@
-860ceccad122d46192d1757f16bcecd6 *DESCRIPTION
+bd036429d67ccdb6866c739a3943f1b6 *DESCRIPTION
 63748910a06e60eabcc68b29f6a8a302 *NAMESPACE
-9606184ba8ac11fff53fe77303820ecd *R/LogConcave.R
+c8a18256e93be4aaceb2e07aa480b9be *R/LogConcave.R
 61f8fa1654e43754ab711f84217319be *data/menodata.rda
 df82a272d6dc774fb4d7b49465d918ec *man/dLC.Rd
 2add4988c6389a0df9f16eb13d9564c2 *man/linesLC.Rd
@@ -13,9 +13,9 @@ df82a272d6dc774fb4d7b49465d918ec *man/dLC.Rd
 c7361a7dcc98cb02f939a2bf9406f42a *man/simCensored.Rd
 c9423bc7ec244ecbd2291fe9a963c97d *src/Cpp2Source/Array.cc
 abdb1b6e14895f55d96c7a7fe70d803e *src/Cpp2Source/Array.hh
-ef215b6c13fddac310fd56322be80ee7 *src/Cpp2Source/QuadProg++.cc
+81a1a23a1d243a0df43ffe9ff4f134c6 *src/Cpp2Source/QuadProg++.cc
 f0d28bf61260e4114476a77a177d5dca *src/Cpp2Source/QuadProg++.hh
-6e3f6e188ebada50850c77d9e697f02c *src/Cpp2Source/baseClass.cpp
-5e9cf1ba8de24bc57defd3a7e238ba6a *src/Cpp2Source/baseClass.h
-7a644a84a56c6828d076ef68b8e66cd4 *src/Cpp2Source/logconcave.cpp
-a1102d2b70a9347aba597432dc668ba4 *src/logconPH.cpp
+b1d222f449978838f13ac41718f024b8 *src/Cpp2Source/baseClass.cpp
+dea226171cea0c6cedc65c5e5ba7ae36 *src/Cpp2Source/baseClass.h
+cc27da718c9695f45cc1e59d60f94e02 *src/Cpp2Source/logconcave.cpp
+2ec6e7c27545520ceed33d09c4d49b11 *src/logconPH.cpp

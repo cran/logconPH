@@ -57,6 +57,7 @@ class actSetBase {
 	void removeActive(int index);
 	double slpTol;
 	double h;
+	double h2;
 	void update1Var(int index);
 	void updateX(int index);
 	void updateXs();
@@ -131,6 +132,8 @@ class LogConCenPH : public LCBase {
 	double fastBasellk();
 	void fastNumActDers();
 	double scaleValue;
+	void moveCovOrBase(int i, double delta);
+	double partialDerCovOrBase(int i, int j);
 	
 	double updateOnFlyLoop();
 };

@@ -18,11 +18,11 @@ bool checkQPconstraints(QuadProgPP::Matrix<double> Amat, QuadProgPP::Vector<doub
 	int I = Amat.ncols();
 	int J = Amat.nrows();
 	if(I != conVec.size()){
-	//	R::Rprintf( "Problem with size of conVec!\n");
+	//	Rprintf( "Problem with size of conVec!\n");
 		return(false);
 	}
 	if(J != propVec.size()){
-	//	R::Rprintf("Problem with size of propVec!\n");
+	//	Rprintf("Problem with size of propVec!\n");
 		return(false);
 	}
 	double tot;
@@ -39,12 +39,12 @@ bool checkQPconstraints(QuadProgPP::Matrix<double> Amat, QuadProgPP::Vector<doub
 
 template <class T>
 void printVec (vector<T> &vec){
-//	R::Rprintf("C code called printVec, but not currently supported\n");
+//	Rprintf("C code called printVec, but not currently supported\n");
 }
 
 template <class T>
 void printVec (vector<T> &vec, int begin, int end){
-//	R::Rprintf("C code called printVec, but not currently supported\n");
+//	Rprintf("C code called printVec, but not currently supported\n");
 }
 
 
@@ -73,7 +73,7 @@ void actSetBase::move_act_b(int index, double h) {
 	int ind_l = -1;
 	int ind_r = -1;
 	double leftSlp = R_PosInf;
-	double rightSlp = -R_PosInf;
+	double rightSlp = R_NegInf;
 	if(a_k == 2 && index == actIndex[0])
 		{
 		leftSlp = (b[actIndex[1]] - b[actIndex[0]]) / (x[actIndex[1]] - x[actIndex[0]]);
@@ -227,12 +227,12 @@ double actSetBase::numericParitialDerv(int index1, int index2){
 // Will not move points with odd index
 void actSetBase::moveX(int index, double h){
 	if(index % 2 == 0){
-	//	R::Rprintf("Attempting to move fixed point \n");
+	//	Rprintf("Attempting to move fixed point \n");
 		return;
 	}
 	int ak = getAK();
 	if(index == actIndex[0] || index == actIndex[ak-1]){
-	//	R::Rprintf("Attempting to move endpoints \n");
+	//	Rprintf("Attempting to move endpoints \n");
 		return;
 	}
 	bool isActive = false;
@@ -317,12 +317,12 @@ vector<double> actSetBase::dervMoveX(int index){
 
 
 void actSetBase::updateXs(){
-	for(int i = 1; i < getAK()- 1; i++){
+	for(int i = 1; i < (getAK()- 1); i++){
 		if(i < getAK() - 1 && actIndex[i] % 2 == 1)
 			updateX(i);
 	}
 	int ai;
-	for(int i = 1; i < getAK() - 1; i++){
+	for(int i = 1; i < (getAK() - 1); i++){
 		if(i < getAK() - 1 && actIndex[i] % 2 == 1){
 			ai = actIndex[i];
 			if(x[ai] - x[ai -1] < pow(10.0, -8.0) ){
@@ -345,7 +345,7 @@ void actSetBase::updateXs(){
 void actSetBase::updateX(int a_index){
 	int index = actIndex[a_index];
 	if(index % 2 == 0){
-	//	R::Rprintf("Warning: attempted to update odd x position\n");
+	//	Rprintf("Warning: attempted to update odd x position\n");
 	}	
 	vector<double> dervs = dervMoveX(index);
 	QuadProgPP::Matrix<double> Hess(2,2);
@@ -380,10 +380,12 @@ void actSetBase::updateX(int a_index){
 		}
 		
 		if(propVec[0] != propVec[0]){
-		//	R::Rprintf("propVec[0] undefined. quiting updateX\n");
+			Rprintf("propVec[0] undefined. quiting updateX\n");
 			return;
 		}
-		
+		if(propVec[1] != propVec[1]){
+			Rprintf("propVec[1] undefined. quitting updateX\n");
+		}
 		move_act_b(index, propVec[0]);
 		moveX(index, propVec[1]);
 		
@@ -392,15 +394,18 @@ void actSetBase::updateX(int a_index){
 			propVec[0] = -propVec[0]/2;
 			propVec[1] = -propVec[1]/2;
 			int it = 0;
-			while( (it <5 && llk_new < llk_old) || !local3OK(a_index) ){
-				it = it + 1;
+			while( (it < 10) && (llk_new < llk_old || !local3OK(a_index) ) ){
+				it++;
 				move_act_b(index, propVec[0]);
 				moveX(index, propVec[1]);
 				propVec[0] = propVec[0]/2;
 				propVec[1] = propVec[1]/2;
 				llk_new = llk();
 			}
+			
 			if( (llk_new < llk_old) || (!local3OK(a_index)) ){
+		//		Rprintf("note: something bad happened in updateX\n");
+		//		Rprintf("propVec[0] = %f, propVec[1] = %f\n", propVec[0], propVec[1]);
 				move_act_b(index, propVec[0] * 2);
 				moveX(index, propVec[1] * 2);
 			}
@@ -416,7 +421,8 @@ void actSetBase::updateX(int a_index){
 		if( (llk_new < llk_old) || !local3OK(a_index)){
 			delta = -delta/2;
 			int it = 0;
-			while( (it < 5 && llk_new < llk_old) || !local3OK(a_index)){
+			while(it < 5 && (llk_new < llk_old || !local3OK(a_index))){
+				it++;
 				moveX(index, delta);
 				delta = delta/2;
 				llk_new = llk();
@@ -426,7 +432,7 @@ void actSetBase::updateX(int a_index){
 			}
 		}
 		if(x[index]-x[index - 1] < 0.0001){
-			if(b[index-1] == -R_PosInf)
+			if(b[index-1] == R_NegInf)
 				b[index-1] = b[index];
 			addActive(index-1);
 			removeActive(index);
@@ -434,7 +440,7 @@ void actSetBase::updateX(int a_index){
 			b[index] = (b[index-1] + b[index+1])/2;
 		}
 		if(x[index+1]-x[index] < 0.0001){
-			if(b[index+1] == -R_PosInf)
+			if(b[index+1] == R_NegInf)
 				b[index+1] = b[index];
 			addActive(index+1);
 			removeActive(index);
@@ -446,15 +452,24 @@ void actSetBase::updateX(int a_index){
 
 
 void actSetBase::update1Var(int index) {
+	int minInd = actIndex[0];
+	int maxInd = actIndex[getAK()-1];
+	if(index > maxInd){
+		Rprintf("Warning: invalid (large) index selected in update1Var\n");
+		return;
+	}
+	if(index < minInd){
+		Rprintf("Warning: invalid (small) index selected in update1Var\n");
+		return;
+	}
 	addActive(index);
 	vector<double> ders = numericDervs(index);
 	vector<double> lims = getLimits(index);
-
+	int its = 0;
 	double loglike = llk();
 	if(ders[1] < 0){
 		double delta = min( max( lims[0], -ders[0]/ders[1] ), lims[1] );
 		move_act_b(index, delta);
-		int its = 0;
 		double new_loglike = llk();
 		
 		delta = delta * -1;
@@ -473,8 +488,7 @@ void actSetBase::update1Var(int index) {
 			delta = max(lims[0], -1.0);
 		else 
 			delta = min(lims[1],1.0);
-			
-		int its = 0;
+		
 		move_act_b(index, delta);
 		double new_loglike = llk();
 		delta = delta * - 1;
@@ -492,18 +506,21 @@ void actSetBase::update1Var(int index) {
 
 
 void actSetBase::VEMstep(){
+/*	calcDervVec();
+	int updateIndex = findMaxError();
+	if(updateIndex == 0)
+		return;
+	update1Var(updateIndex);
+*/
 	calcDervVec();
-//	int updateIndex = findMaxError();
-//	if(updateIndex == 0)
-//		return;
-//		update1Var(updateIndex);
-
 	vector<int> points = findMaxIntError();
 	int pointsSize = points.size();
+	int thisIndex;
 	for(int i = 0; i < pointsSize;i++){
-		if(points[i]  > 0)
-			update1Var(points[i]);
-	}
+		thisIndex = points[i];
+		if(thisIndex > 0)
+			update1Var(thisIndex);
+	}	
 }
 
 void actSetBase::ICMstep(){
@@ -561,14 +578,25 @@ void actSetBase::ICMstep(){
 			}
 		}	
 		qpLimMatrix(Amat, conVec);	
+		double inf = 1.0E300;
+
 		double QP_result = QuadProgPP::solve_quadprog(ParHess, d1, blankMat, blankEqs, Amat, conVec, propStep);	
-		if(QP_result == -R_PosInf){
-		//	R::Rprintf("Warning: no feasible solution to QP problem! Skipping ICM step\n");
+		if(QP_result == inf){
+		//	Rprintf("Warning: no feasible solution to QP problem! Skipping ICM step\n");
 			return;
 		}	
 		double str_llk = llk();
 		vector<double> limits(2);
 		bool propOK = true;
+		for(int i = 0; i < ak; i++){
+			propOK = false;
+			if(propStep[i] < 10000.0 && propStep[i] > -10000.0)
+				propOK = true;
+		}
+		if(propOK == false){
+		//	Rprintf("note: propStep is really crazy. skipping\n");
+			return;
+		}
 		for(int i = 0; i < ak; i++)
 			move_act_b(actIndex[i], propStep[i]);
 		for(int j = 0; j < ak; j++){

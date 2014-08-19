@@ -71,6 +71,12 @@ double solve_quadprog(Matrix<double>& G, Vector<double>& g0,
                       Vector<double>& x)
 {
 
+  double inf;
+//  if (std::numeric_limits<double>::has_R_PosInf)
+//    inf = std::numeric_limits<double>::R_PosInf();
+//  else
+    inf = 1.0E300;
+
 
   std::ostringstream msg;
   {
@@ -81,50 +87,50 @@ double solve_quadprog(Matrix<double>& G, Vector<double>& g0,
        CE.nrows() >= mx || CE.ncols() >= mx ||
        CI.nrows() >= mx || CI.ncols() >= mx || 
        ci0.size() >= mx || ce0.size() >= mx || g0.size() >= mx){
-      msg << "The dimensions of one of the input matrices or vectors were "
-	  << "too large." << std::endl
-	  << "The maximum allowable size for inputs to solve_quadprog is:"
-	  << mx << std::endl;
+   //   msg << "The dimensions of one of the input matrices or vectors were "
+	//  << "too large." << std::endl
+	//  << "The maximum allowable size for inputs to solve_quadprog is:"
+	 // << mx << std::endl;
   //    throw std::logic_error(msg.str());
-  		return(-R_PosInf);
+  		return(inf);
     }
   }
   int n = G.ncols(), p = CE.ncols(), m = CI.ncols();
   if ((int)G.nrows() != n)
   {
-    msg << "The matrix G is not a square matrix (" << G.nrows() << " x " 
-	<< G.ncols() << ")";
+  //  msg << "The matrix G is not a square matrix (" << G.nrows() << " x " 
+	//	<< G.ncols() << ")";
  //   throw std::logic_error(msg.str());
- 	return(-R_PosInf);
+ 	return(inf);
   }
   if (CE.ncols() > 0 && (int)CE.nrows() != n)
   {
-    msg << "The matrix CE is incompatible (incorrect number of rows " 
-	<< CE.nrows() << " , expecting " << n << ")";
+  //  msg << "The matrix CE is incompatible (incorrect number of rows " 
+//	<< CE.nrows() << " , expecting " << n << ")";
 //    throw std::logic_error(msg.str());
-	return(-R_PosInf);
+	return(inf);
   }
   if ((int)ce0.size() != p)
   {
-    msg << "The vector ce0 is incompatible (incorrect dimension " 
-	<< ce0.size() << ", expecting " << p << ")";
+//    msg << "The vector ce0 is incompatible (incorrect dimension " 
+//	<< ce0.size() << ", expecting " << p << ")";
 //    throw std::logic_error(msg.str());
-	return(-R_PosInf);
+	return(inf);
 	  }
   if (CI.ncols() > 0 && (int)CI.nrows() != n)
   {
-    msg << "The matrix CI is incompatible (incorrect number of rows " 
-	<< CI.nrows() << " , expecting " << n << ")";
+ //   msg << "The matrix CI is incompatible (incorrect number of rows " 
+//	<< CI.nrows() << " , expecting " << n << ")";
 //    throw std::logic_error(msg.str());
-	return(-R_PosInf);
+	return(inf);
 
   }
   if ((int)ci0.size() != m)
   {
-    msg << "The vector ci0 is incompatible (incorrect dimension " 
-	<< ci0.size() << ", expecting " << m << ")";
+ //   msg << "The vector ci0 is incompatible (incorrect dimension " 
+//	<< ci0.size() << ", expecting " << m << ")";
    // throw std::logic_error(msg.str());
-   	return(-R_PosInf);
+   	return(inf);
   }
   x.resize(n);
   register int i, j, k, l; /* indices */
@@ -132,11 +138,6 @@ double solve_quadprog(Matrix<double>& G, Vector<double>& g0,
   Matrix<double> R(n, n), J(n, n);
   Vector<double> s(m + p), z(n), r(m + p), d(n), np(n), u(m + p), x_old(n), u_old(m + p);
   double f_value, psi, c1, c2, sum, ss, R_norm;
-  double inf;
-//  if (std::numeric_limits<double>::has_R_PosInf)
-//    inf = std::numeric_limits<double>::R_PosInf();
-//  else
-    inf = 1.0E300;
   double t, t1, t2; /* t is the step lenght, which is the minimum of the partial step length t1 
     * and the full step length t2 */
   Vector<int> A(m + p), A_old(m + p), iai(m + p);
@@ -264,7 +265,7 @@ double solve_quadprog(Matrix<double>& G, Vector<double>& g0,
     {	  
     
 //      std::cout << "calling solve_quadprog and quiting because constraints linearly dependent\n";
-	  return(0.0);
+	  return(inf);
 
       // Equality constraints are linearly dependent
  //     throw std::runtime_error("Constraints are linearly dependent");

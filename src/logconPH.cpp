@@ -55,7 +55,7 @@ extern "C" SEXP LC_CoxPH(SEXP R_L, SEXP R_R, SEXP R_x,
 				}
 			}
 		}
-		if(rightDone == false | leftDone == false){
+		if(rightDone == false || leftDone == false){
 			Rprintf("problem: data does not match x! Quiting\n");
 			return(R_NilValue);
 		}
@@ -71,7 +71,6 @@ extern "C" SEXP LC_CoxPH(SEXP R_L, SEXP R_R, SEXP R_x,
 		return(R_NilValue);
 	}
 	
-
 	QuadProgPP::Matrix<double> Covars(cov_n,num_cov);
 	for(int i = 0; i < cov_n; i++){
 		for(int j = 0; j < num_cov; j++)
@@ -100,13 +99,13 @@ extern "C" SEXP LC_CoxPH(SEXP R_L, SEXP R_R, SEXP R_x,
 	optObj.VEMstep();	
 	optObj.ICMstep();
 	
-//	double old_llk = -INFINITY;
+//	double old_llk = -R_PosInf;
 		
 //	double new_llk = optObj.llk();
 	
 	int inner_it = 0;
 	int outer_it = 0;
-	int max_inner_its = 2*sqrt(optObj.x.size()) + 5;
+	int max_inner_its = 20;
 	int max_outer_its = 100;
 	
 		
@@ -118,16 +117,16 @@ extern "C" SEXP LC_CoxPH(SEXP R_L, SEXP R_R, SEXP R_x,
 	double inner_llk, outer_llk;
 	int loopcount = 0;
 	bool start_move_x = false;
-	while( (outer_it < max_outer_its) & ( (outer_error > outer_tol) | (loopcount < 2))){
+	while( (outer_it < max_outer_its) && ( (outer_error > outer_tol) || (loopcount < 2))){
 		outer_it++;
 		outer_llk = optObj.llk();
 		optObj.VEMstep();
 		inner_error = inner_tol + 1;
 		reg_error = outer_tol + 1;
 		inner_it = 0;
-		while(inner_it < max_inner_its & inner_error > inner_tol){
+		while(inner_it < max_inner_its && inner_error > inner_tol){
 			inner_it++;
-			if(start_move_x & c_move_x)
+			if(start_move_x && c_move_x)
 				optObj.updateXs();
 			if(reg_error > outer_tol){
 				reg_error = optObj.updateRegress();
@@ -204,7 +203,7 @@ LogConCenPH::LogConCenPH(int MoveX,
 				   	allowMoveX = MoveX;
 				   	h = 0.0001;
 				   	slpTol = pow(10.0, -14.5);
-				   	cur_Err = INFINITY;
+				   	cur_Err = R_PosInf;
 				   	endTol = -10;
 				   	int k = X.size();
 				   	dx.resize(k);
@@ -236,8 +235,8 @@ double LogConCenPH::llk(){
 	double db;
 	s[0] = 0;
 //	double der;
-	if(x[0] > -INFINITY){
-		if(b[1] == -INFINITY | b[0] == -INFINITY){
+	if(x[0] > -R_PosInf){
+		if(b[1] == -R_PosInf || b[0] == -R_PosInf){
 				s[1] = s[0];
 			} else {
 			db = b[1] - b[0];
@@ -247,19 +246,19 @@ double LogConCenPH::llk(){
 				s[1] = dx[0]/db * (exp(b[1]) - exp(b[0]) ); 
 		}
 	}
-	if(x[0] == -INFINITY){
-		if(b[1] == -INFINITY){
+	if(x[0] == -R_PosInf){
+		if(b[1] == -R_PosInf){
 			s[1] = 0;
 		} else {
 			db = (b[2] - b[1]) / dx[1];
 			if(db <= 0){
-				return(-INFINITY);
+				return(-R_PosInf);
 			}
 			s[1] = exp(b[1])/db;
 			}
 		}
 	for(int i = 1; i < k-2; i++){
-		if(b[i+1] == -INFINITY | b[i] == -INFINITY){
+		if(b[i+1] == -R_PosInf || b[i] == -R_PosInf){
 			s[i+1] = s[i];
 			continue;
 		} 
@@ -269,8 +268,8 @@ double LogConCenPH::llk(){
 		else			
 			s[i+1] = s[i] + dx[i]/db * (exp(b[i+1]) - exp(b[i]) ); 				
 		}
-	if(x[k-1] < INFINITY){
-		if(b[k-1] == -INFINITY | b[k-2] == -INFINITY){
+	if(x[k-1] < R_PosInf){
+		if(b[k-1] == -R_PosInf || b[k-2] == -R_PosInf){
 			s[k-1] = s[k-2];
 			} 
 		else{
@@ -281,14 +280,14 @@ double LogConCenPH::llk(){
 				s[k-1] = s[k-2] + dx[k-2]/db * (exp(b[k-1]) - exp(b[k-2]) ); 
 			}
 		}
-	if(x[k-1] == INFINITY){
-		if(b[k-2] == -INFINITY){
+	if(x[k-1] == R_PosInf){
+		if(b[k-2] == -R_PosInf){
 			s[k-1] = s[k-2];
 			}	 
 		else {
 			db = (b[k-2] - b[k-3]) / dx[k-3];//(x[k-2] - x[k-3]);
 			if(db >= 0){
-				return(-INFINITY);
+				return(-R_PosInf);
 			}
 			s[k-1] = s[k-2] - exp(b[k-2])/db;
 		}					
@@ -319,15 +318,15 @@ double LogConCenPH::llk(){
 		p_ob  =  pow(1-s[lo_ind], nu[i]) - pow(1-s[hi_ind], nu[i]);
 					
 		if(p_ob == 0) {
-			 return(-INFINITY);
+			 return(-R_PosInf);
 		}
 		log_sum = log_sum + log(p_ob);
 	}
-	if(log_sum == INFINITY | log_sum == -INFINITY){
-		return(-INFINITY);
+	if(log_sum == R_PosInf || log_sum == -R_PosInf){
+		return(-R_PosInf);
 	}
 	if(log_sum != log_sum){
-		return(-INFINITY);
+		return(-R_PosInf);
 	}
 	return (log_sum);
 }
@@ -357,15 +356,15 @@ double LogConCenPH::nullk(){
 		}
 		p_ob  =  pow(1-s[lo_ind], nu[i]) - pow(1-s[hi_ind], nu[i]);
 		if(!(p_ob > 0) ) {
-			 return(-INFINITY);
+			 return(-R_PosInf);
 		}
 		log_sum += log(p_ob);
 	}
-	if(log_sum == INFINITY | log_sum == -INFINITY){
-		return(-INFINITY);
+	if(log_sum == R_PosInf || log_sum == -R_PosInf){
+		return(-R_PosInf);
 	}
 	if(log_sum != log_sum){
-		return(-INFINITY);
+		return(-R_PosInf);
 	}
 	return (log_sum);
 }
@@ -405,7 +404,7 @@ void LogConCenPH::calcNuDerv(){
 		cov_b_d[i] = (b_h[i] - b_l[i])/(2*h);
 		Hess_b[i][i] = (b_h[i] + b_l[i] - 2 * llk_0)/pow(h,2.0);
 	}
-	
+
 	
 	for(int i = 0; i < k; i++){
 		for(int j = i+1; j < k; j++){
@@ -444,7 +443,7 @@ double LogConCenPH::updateRegress(){
 	int tries = 0;
 	double diagAdd = 1;
 	
-	while(decompOK == false & tries < 10){
+	while(decompOK == false && tries < 10){
 		test_Hess_b = Hess_b;
 		for(int i = 0; i< cov_b_d.size(); i++)
 			test_Hess_b[i][i] = test_Hess_b[i][i] + diagAdd;
@@ -470,7 +469,7 @@ double LogConCenPH::updateRegress(){
 	if(llk_new < llk_begin){
 		propStep = -propStep;
 		int it = 0;
-		while(it < 5 & llk_new < llk_begin){
+		while(it < 5 && llk_new < llk_begin){
 			it++;
 			for(int i = 0; i < propStep.size(); i++)
 				propStep[i] = propStep[i]/2;
@@ -493,8 +492,8 @@ void LogConCenPH::update_p(int index1, int index2){
 	p[0] = 0;
 	double slp = (b[index2] - b[index1])/(x[index2] - x[index1]);
 	if(index1 == 0){
-		if(x[0] > -INFINITY){
-		if(b[1] == -INFINITY | b[0] == -INFINITY){
+		if(x[0] > -R_PosInf){
+		if(b[1] == -R_PosInf || b[0] == -R_PosInf){
 				p[1] = 0;
 			} else {
 			double db = b[1] - b[0];
@@ -504,8 +503,8 @@ void LogConCenPH::update_p(int index1, int index2){
 				p[1] = 1/slp * (exp(b[1]) - exp(b[0]) ); 
 		}
 	}
-	if(x[0] == -INFINITY){
-		if(b[1] == -INFINITY){
+	if(x[0] == -R_PosInf){
+		if(b[1] == -R_PosInf){
 			p[1] = 0;
 		} else {
 			double db = (b[2] - b[1]) / dx[1];
@@ -524,8 +523,8 @@ void LogConCenPH::update_p(int index1, int index2){
 	}
 	
 	if(index2 == k-1){
-		if(x[k-1] < INFINITY){
-			if(b[k-1] == -INFINITY | b[k-2] == -INFINITY){
+		if(x[k-1] < R_PosInf){
+			if(b[k-1] == -R_PosInf || b[k-2] == -R_PosInf){
 				p[k-1] = 0;
 				} 
 			else{
@@ -536,8 +535,8 @@ void LogConCenPH::update_p(int index1, int index2){
 					p[k-1] = dx[k-2]/db * (exp(b[k-1]) - exp(b[k-2]) ); 
 				}
 			}
-		if(x[k-1] == INFINITY){
-			if(b[k-2] == -INFINITY)
+		if(x[k-1] == R_PosInf){
+			if(b[k-2] == -R_PosInf)
 				p[k-1] = 0;
 			else {
 				double db = (b[k-2] - b[k-3]) / dx[k-3];//(x[k-2] - x[k-3]);
@@ -582,15 +581,15 @@ double LogConCenPH::fastBasellk(){
 		p_ob  =  pow(1-s[lo_ind], nu[i]) - pow(1-s[hi_ind], nu[i]);
 					
 		if(p_ob == 0) {
-			 return(-INFINITY);
+			 return(-R_PosInf);
 		}
 		log_sum += log(p_ob);
 	}
-	if(log_sum == INFINITY | log_sum == -INFINITY){
-		return(-INFINITY);
+	if(log_sum == R_PosInf || log_sum == -R_PosInf){
+		return(-R_PosInf);
 	}
 	if(log_sum != log_sum){
-		return(-INFINITY);
+		return(-R_PosInf);
 	}
 	return (log_sum);
 }

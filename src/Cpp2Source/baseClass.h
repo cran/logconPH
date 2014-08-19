@@ -1,6 +1,11 @@
-
 #include <iostream>
 #include <vector>
+
+#include <R.h>
+#include <Rinternals.h>
+#include <R_ext/Arith.h>
+
+
 //#include "eigen/Eigen/Eigen"
 //#include <Eigen/LU>
 //#include<Eigen/Dense>

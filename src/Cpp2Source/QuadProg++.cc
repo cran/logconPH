@@ -76,7 +76,7 @@ double solve_quadprog(Matrix<double>& G, Vector<double>& g0,
   {
     //Ensure that the dimensions of the matrices and vectors can be
     //safely converted from unsigned int into int without overflow.
-    unsigned mx = std::numeric_limits<int>::max();
+    int mx = std::numeric_limits<int>::max();
     if(G.ncols() >= mx || G.nrows() >= mx || 
        CE.nrows() >= mx || CE.ncols() >= mx ||
        CI.nrows() >= mx || CI.ncols() >= mx || 
@@ -86,7 +86,7 @@ double solve_quadprog(Matrix<double>& G, Vector<double>& g0,
 	  << "The maximum allowable size for inputs to solve_quadprog is:"
 	  << mx << std::endl;
   //    throw std::logic_error(msg.str());
-  		return(-INFINITY);
+  		return(-R_PosInf);
     }
   }
   int n = G.ncols(), p = CE.ncols(), m = CI.ncols();
@@ -95,28 +95,28 @@ double solve_quadprog(Matrix<double>& G, Vector<double>& g0,
     msg << "The matrix G is not a square matrix (" << G.nrows() << " x " 
 	<< G.ncols() << ")";
  //   throw std::logic_error(msg.str());
- 	return(-INFINITY);
+ 	return(-R_PosInf);
   }
   if (CE.ncols() > 0 && (int)CE.nrows() != n)
   {
     msg << "The matrix CE is incompatible (incorrect number of rows " 
 	<< CE.nrows() << " , expecting " << n << ")";
 //    throw std::logic_error(msg.str());
-	return(-INFINITY);
+	return(-R_PosInf);
   }
   if ((int)ce0.size() != p)
   {
     msg << "The vector ce0 is incompatible (incorrect dimension " 
 	<< ce0.size() << ", expecting " << p << ")";
 //    throw std::logic_error(msg.str());
-	return(-INFINITY);
+	return(-R_PosInf);
 	  }
   if (CI.ncols() > 0 && (int)CI.nrows() != n)
   {
     msg << "The matrix CI is incompatible (incorrect number of rows " 
 	<< CI.nrows() << " , expecting " << n << ")";
 //    throw std::logic_error(msg.str());
-	return(-INFINITY);
+	return(-R_PosInf);
 
   }
   if ((int)ci0.size() != m)
@@ -124,7 +124,7 @@ double solve_quadprog(Matrix<double>& G, Vector<double>& g0,
     msg << "The vector ci0 is incompatible (incorrect dimension " 
 	<< ci0.size() << ", expecting " << m << ")";
    // throw std::logic_error(msg.str());
-   	return(-INFINITY);
+   	return(-R_PosInf);
   }
   x.resize(n);
   register int i, j, k, l; /* indices */
@@ -133,9 +133,9 @@ double solve_quadprog(Matrix<double>& G, Vector<double>& g0,
   Vector<double> s(m + p), z(n), r(m + p), d(n), np(n), u(m + p), x_old(n), u_old(m + p);
   double f_value, psi, c1, c2, sum, ss, R_norm;
   double inf;
-  if (std::numeric_limits<double>::has_infinity)
-    inf = std::numeric_limits<double>::infinity();
-  else
+//  if (std::numeric_limits<double>::has_R_PosInf)
+//    inf = std::numeric_limits<double>::R_PosInf();
+//  else
     inf = 1.0E300;
   double t, t1, t2; /* t is the step lenght, which is the minimum of the partial step length t1 
     * and the full step length t2 */
@@ -244,7 +244,7 @@ double solve_quadprog(Matrix<double>& G, Vector<double>& g0,
     /* compute full step length t2: i.e., the minimum step in primal space s.t. the contraint 
       becomes feasible */
     t2 = 0.0;
-    if (fabs(scalar_product(z, z)) > std::numeric_limits<double>::epsilon()) // i.e. z != 0
+    if (std::fabs(scalar_product(z, z)) > std::numeric_limits<double>::epsilon()) // i.e. z != 0
       t2 = (-scalar_product(np, x) - ce0[i]) / scalar_product(z, np);
     
     /* set x = x + t2 * z */
@@ -309,7 +309,7 @@ l1:	iter++;
 #endif
   
   
-  if (fabs(psi) <= m * std::numeric_limits<double>::epsilon() * c1 * c2* 100.0)
+  if (std::fabs(psi) <= m * std::numeric_limits<double>::epsilon() * c1 * c2* 100.0)
   {
     /* numerically there are not infeasibilities anymore */
     q = iq;
@@ -339,7 +339,7 @@ l2: /* Step 2: check for feasibility and determine a new S-pair */
   if (ss >= 0.0)
   {
     q = iq;
-    
+    iq = q;
     return f_value;
   }
   
@@ -388,7 +388,7 @@ l2a:/* Step 2a: determine step direction */
     }
   }
   /* Compute t2: full step length (minimum step in primal space such that the constraint ip becomes feasible */
-  if (fabs(scalar_product(z, z))  > std::numeric_limits<double>::epsilon()) // i.e. z != 0
+  if (std::fabs(scalar_product(z, z))  > std::numeric_limits<double>::epsilon()) // i.e. z != 0
     t2 = -s[ip] / scalar_product(z, np);
   else
     t2 = inf; /* +inf */
@@ -448,7 +448,7 @@ l2a:/* Step 2a: determine step direction */
   print_vector("A", A, iq + 1);
 #endif
   
-  if (fabs(t - t2) < std::numeric_limits<double>::epsilon())
+  if (std::fabs(t - t2) < std::numeric_limits<double>::epsilon())
   {
 #ifdef TRACE_SOLVER
 //    std::cout << "Full step has taken " << t << std::endl;
@@ -581,7 +581,7 @@ bool add_constraint(Matrix<double>& R, Matrix<double>& J, Vector<double>& d, int
     cc = d[j - 1];
     ss = d[j];
     h = distance(cc, ss);
-    if (fabs(h) < std::numeric_limits<double>::epsilon()) // h == 0
+    if (std::fabs(h) < std::numeric_limits<double>::epsilon()) // h == 0
       continue;
     d[j] = 0.0;
     ss = ss / h;
@@ -617,12 +617,12 @@ bool add_constraint(Matrix<double>& R, Matrix<double>& J, Vector<double>& d, int
   print_vector("d", d, iq);
 #endif
   
-  if (fabs(d[iq - 1]) <= std::numeric_limits<double>::epsilon() * R_norm) 
+  if (std::fabs(d[iq - 1]) <= std::numeric_limits<double>::epsilon() * R_norm) 
   {
     // problem degenerate
     return false;
   }
-  R_norm = std::max<double>(R_norm, fabs(d[iq - 1]));
+  R_norm = std::max<double>(R_norm, std::fabs(d[iq - 1]));
   return true;
 }
 
@@ -671,7 +671,7 @@ void delete_constraint(Matrix<double>& R, Matrix<double>& J, Vector<int>& A, Vec
     cc = R[j][j];
     ss = R[j + 1][j];
     h = distance(cc, ss);
-    if (fabs(h) < std::numeric_limits<double>::epsilon()) // h == 0
+    if (std::fabs(h) < std::numeric_limits<double>::epsilon()) // h == 0
       continue;
     cc = cc / h;
     ss = ss / h;
@@ -706,8 +706,8 @@ void delete_constraint(Matrix<double>& R, Matrix<double>& J, Vector<int>& A, Vec
 inline double distance(double a, double b)
 {
   register double a1, b1, t;
-  a1 = fabs(a);
-  b1 = fabs(b);
+  a1 = std::fabs(a);
+  b1 = std::fabs(b);
   if (a1 > b1) 
   {
     t = (b1 / a1);

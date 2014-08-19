@@ -1,7 +1,5 @@
 #include "baseClass.cpp"
 
-#include <R.h>
-#include <Rinternals.h>
 
 extern "C" SEXP uniVarLCCens(SEXP R_L, SEXP R_R, SEXP R_x,
 	SEXP R_b, SEXP R_repVec, SEXP R_actInds, SEXP move_X){
@@ -36,12 +34,12 @@ extern "C" SEXP uniVarLCCens(SEXP R_L, SEXP R_R, SEXP R_x,
 	int max_it = 500;
 	int it = 0;
 	double tol = pow(10.0, -10.0);
-	double oldLike = -INFINITY;
+	double oldLike = -R_PosInf;
 	double Err = tol + 1;
 	double newLike = 0;
 	bool startMoveX = false;
 	
-	while(it < max_it & Err > tol){
+	while(it < max_it && Err > tol){
 		it ++;		
 		optObj.VEMstep();
 		
@@ -51,9 +49,9 @@ extern "C" SEXP uniVarLCCens(SEXP R_L, SEXP R_R, SEXP R_x,
 			
 		optObj.checkEnds();
 
-		if(startMoveX & c_move_x){
+		if(startMoveX && c_move_x){
 			for(int i = 1; i < optObj.getAK()- 1; i++){
-				if(i < optObj.getAK() - 1 & optObj.actIndex[i] % 2 == 1)
+				if(i < optObj.getAK() - 1 && optObj.actIndex[i] % 2 == 1)
 					optObj.updateX(i);
 			}
 		}
@@ -61,7 +59,7 @@ extern "C" SEXP uniVarLCCens(SEXP R_L, SEXP R_R, SEXP R_x,
 		newLike = optObj.llk();
 		Err = newLike - oldLike;
 		oldLike = newLike;
-		if((Err < tol) & (!startMoveX)){
+		if((Err < tol) && (!startMoveX)){
 			startMoveX = true;
 			Err = tol + 1;
 			}
@@ -103,7 +101,7 @@ LogConCen::LogConCen(int MoveX,
 				   	rep_vec = repVec;
 				   	h = 0.0001;
 				   	slpTol = pow(10.0, -14.5);
-				   	cur_Err = INFINITY;
+				   	cur_Err = R_PosInf;
 				   	endTol = -15;
 				   	int k = X.size();
 				   	dx.resize(k);
@@ -124,8 +122,8 @@ double LogConCen::llk() {
 //	s.resize(k);
 	s[0] = 0;
 //	double der;
-	if(x[0] > -INFINITY){
-		if(b[1] == -INFINITY | b[0] == -INFINITY){
+	if(x[0] > -R_PosInf){
+		if(b[1] == -R_PosInf || b[0] == -R_PosInf){
 				s[1] = s[0];
 			} else {
 //			dx = x[1] - x[0];
@@ -136,19 +134,19 @@ double LogConCen::llk() {
 				s[1] = dx[0]/db * (exp(b[1]) - exp(b[0]) ); 
 		}
 	}
-	if(x[0] == -INFINITY){
-		if(b[1] == -INFINITY){
+	if(x[0] == -R_PosInf){
+		if(b[1] == -R_PosInf){
 			s[1] = 0;
 		} else {
 			db = (b[2] - b[1]) / dx[1];
 			if(db <= 0){
-				return(-INFINITY);
+				return(-R_PosInf);
 			}
 			s[1] = exp(b[1])/db;
 			}
 		}
 	for(int i = 1; i < k-2; i++){
-		if(b[i+1] == -INFINITY | b[i] == -INFINITY){
+		if(b[i+1] == -R_PosInf || b[i] == -R_PosInf){
 			s[i+1] = s[i];
 			continue;
 		} 
@@ -159,8 +157,8 @@ double LogConCen::llk() {
 		else			
 			s[i+1] = s[i] + dx[i]/db * (exp(b[i+1]) - exp(b[i]) ); 				
 		}
-	if(x[k-1] < INFINITY){
-		if(b[k-1] == -INFINITY | b[k-2] == -INFINITY){
+	if(x[k-1] < R_PosInf){
+		if(b[k-1] == -R_PosInf || b[k-2] == -R_PosInf){
 			s[k-1] = s[k-2];
 			} 
 		else{
@@ -172,14 +170,14 @@ double LogConCen::llk() {
 				s[k-1] = s[k-2] + dx[k-2]/db * (exp(b[k-1]) - exp(b[k-2]) ); 
 			}
 		}
-	if(x[k-1] == INFINITY){
-		if(b[k-2] == -INFINITY){
+	if(x[k-1] == R_PosInf){
+		if(b[k-2] == -R_PosInf){
 			s[k-1] = s[k-2];
 			}	 
 		else {
 			db = (b[k-2] - b[k-3]) / dx[k-3];//(x[k-2] - x[k-3]);
 			if(db >= 0){
-				return(-INFINITY);
+				return(-R_PosInf);
 			}
 			s[k-1] = s[k-2] - exp(b[k-2])/db;
 		}					
@@ -205,19 +203,19 @@ double LogConCen::llk() {
 			if(rep_vec[i] == 0)
 			 	p_ob = 1;
 			if(rep_vec[i] != 0){
-			 	return(-INFINITY);
+			 	return(-R_PosInf);
 			 }
 		}
 		log_sum = log_sum + log(p_ob) * rep_vec[i];
 		tot_rvec = tot_rvec + rep_vec[i];
 	}
-	if(log_sum == INFINITY | log_sum == -INFINITY){
-		return(-INFINITY);
+	if(log_sum == R_PosInf || log_sum == -R_PosInf){
+		return(-R_PosInf);
 	}
 	double output = log_sum - tot_rvec * log(s[k-1]) ;
 	if(output != output){
 		Rprintf("Warning: likelihood function undefined!\n");
-		return(-INFINITY);
+		return(-R_PosInf);
 	}
 	return (output);
 }
@@ -230,11 +228,11 @@ void LCBase::checkEnds(){
 	bool exit_loop = false;
 	double limit = std::pow(10.0, -10.0);
 	int it = 0;
-	while(exit_loop == false & it < 5){
+	while(exit_loop == false && it < 5){
 		it++;
 		if(b[actIndex[0] ] < endTol){
 			old_b = b[actIndex[0] ];
-			b[actIndex[0]] = -INFINITY;
+			b[actIndex[0]] = -R_PosInf;
 			new_llk = llk();
 			if(new_llk > (cur_llk - limit) ){
 				int moveInd = actIndex[0] ;
@@ -251,12 +249,12 @@ void LCBase::checkEnds(){
 	it = 0;
 	exit_loop = false;
 	int endIndex;
-	while(exit_loop == false & it < 5){
+	while(exit_loop == false && it < 5){
 		it++;
 		endIndex = actIndex[getAK() - 1];
 		if(b[endIndex] < endTol){
 			old_b = b[endIndex];
-			b[endIndex] = -INFINITY;
+			b[endIndex] = -R_PosInf;
 			new_llk = llk();
 			if(new_llk > (cur_llk - limit) ){
 				addActive(endIndex-1);
@@ -270,12 +268,12 @@ void LCBase::checkEnds(){
 }
 
 vector<double> LCBase::getLimits(int index){
-	double minD = -INFINITY;
-	double max_l = INFINITY;
-	double max_r = INFINITY;
-	double maxD = INFINITY;
-	double l_slope = INFINITY;
-	double r_slope = -INFINITY;
+	double minD = -R_PosInf;
+	double max_l = R_PosInf;
+	double max_r = R_PosInf;
+	double maxD = R_PosInf;
+	double l_slope = R_PosInf;
+	double r_slope = -R_PosInf;
 	double m_slope;
 	int ak = getAK();
 	int act_l = -1;
@@ -297,16 +295,16 @@ vector<double> LCBase::getLimits(int index){
 	if(ak > 2){
 		if(act_l > 0){
 			l_slope = (b[actIndex[act_l]] - b[actIndex[act_l-1] ] )/(x[actIndex[act_l]] - x[actIndex[act_l-1]]);
-			if(l_slope < INFINITY)
+			if(l_slope < R_PosInf)
 				max_l = b[actIndex[act_l]] + l_slope * (x[index] - x[actIndex[act_l]]) - b[index];
 		}
 		if(act_r < ak - 1){
 			r_slope = (b[actIndex[act_r+1]] - b[actIndex[act_r] ] )/(x[actIndex[act_r+1]] - x[actIndex[act_r]]);
-			if(r_slope > -INFINITY)
+			if(r_slope > -R_PosInf)
 				max_r = b[actIndex[act_r]] + r_slope * (x[index] - x[actIndex[act_r]]) - b[index];
 		}
 	maxD = min(max_l, max_r);
-	if(act_l >= 0 & act_r <= actIndex[ak-1]){
+	if(act_l >= 0 && act_r <= actIndex[ak-1]){
 		m_slope = (b[actIndex[act_r]] - b[actIndex[act_l]]) / (x[actIndex[act_r]] - x[actIndex[act_l]]);
 		minD = b[actIndex[act_l]] + m_slope * (x[index] - x[actIndex[act_l]]) - b[index];
 		}
@@ -324,7 +322,7 @@ void LogConCen::calcBaseDervs(){
 	for(int i = 0; i < k-1; i++)
 		{
 		d_bl[i] = 0;
-		if(b[i] == -INFINITY | b[i+1] == -INFINITY)
+		if(b[i] == -R_PosInf || b[i+1] == -R_PosInf)
 			{
 			continue;
 			}
@@ -340,16 +338,16 @@ void LogConCen::calcBaseDervs(){
 			d_bl[i] = -(exp(b[i]) * db - (exp(b[i+1]) - exp(b[i]))) * dx[i] / pow(db, 2);
 			}
 		}
-	if(x[0] == -INFINITY)
+	if(x[0] == -R_PosInf)
 		d_bl[0] = 0;	
-/*	if(x[0] == -INFINITY & x[1] > -INFINITY)
+/*	if(x[0] == -R_PosInf & x[1] > -R_PosInf)
 		{
 		dx = x[1] - x[2];
 		db = betas[1] - x[2];
 		d_bl[1] = (exp(betas[1]) * dx * (1 - db)  )  / (db * db);
 		} */
 		
-	if(x[k-1] == INFINITY & b[k-2] > -INFINITY)
+	if(x[k-1] == R_PosInf && b[k-2] > -R_PosInf)
 		{
 		//dx = x[k-2] - x[k-3];
 		db = b[k-2] - b[k-3];
@@ -361,7 +359,7 @@ void LogConCen::calcBaseDervs(){
 	for(int i = 1; i < k; i++)
 		{
 		d_bu[i] = 0;
-		if(b[i-1] == -INFINITY | b[i] == -INFINITY)
+		if(b[i-1] == -R_PosInf || b[i] == -R_PosInf)
 			{
 			d_bu[i] = 0;
 			continue;
@@ -378,7 +376,7 @@ void LogConCen::calcBaseDervs(){
 			d_bu[i] = (exp(b[i]) * db - (exp(b[i]) - exp(b[i-1]))) * dx[i-1] / pow(db, 2);
 			}
 		}
-		if(x[0] == -INFINITY & b[1] > -INFINITY)
+		if(x[0] == -R_PosInf && b[1] > -R_PosInf)
 			{
 //			dx = x[2] - x[1];
 			db = b[2] - b[1];
@@ -388,9 +386,9 @@ void LogConCen::calcBaseDervs(){
 	 
 //		double s[k]; 
 		s[0] = 0;
-		if(x[0] > -INFINITY)
+		if(x[0] > -R_PosInf)
 			{
-			if(b[1] == -INFINITY | b[0] == -INFINITY)
+			if(b[1] == -R_PosInf || b[0] == -R_PosInf)
 				{
 				s[1] = s[0];
 				} else
@@ -403,22 +401,22 @@ void LogConCen::calcBaseDervs(){
 					s[1] = dx[0]/db * (exp(b[1]) - exp(b[0]) ); 
 				}
 			} 
-		if(x[0] == -INFINITY)
+		if(x[0] == -R_PosInf)
 			{
-			if(b[1] == -INFINITY)
+			if(b[1] == -R_PosInf)
 				{
 				s[1] = 0;
 				} else
 				{
 				db = (b[2] - b[1]) / (x[2] - x[1]);
 				if(db <= 0)
-					s[1] = INFINITY;
+					s[1] = R_PosInf;
 				s[1] = exp(b[1])/db;
 				}
 			}
 		for(int i = 1; i < k-2; i++)
 			{
-			if(b[i+1] == -INFINITY | b[i] == -INFINITY)
+			if(b[i+1] == -R_PosInf || b[i] == -R_PosInf)
 				{
 				s[i+1] = s[i];
 				continue;
@@ -430,9 +428,9 @@ void LogConCen::calcBaseDervs(){
 			else			
 				s[i+1] = s[i] + dx[i]/db * (exp(b[i+1]) - exp(b[i]) ); 
 			}
-		if(x[k-1] < INFINITY)
+		if(x[k-1] < R_PosInf)
 			{
-			if(b[k-1] == -INFINITY | b[k-2] == -INFINITY)
+			if(b[k-1] == -R_PosInf || b[k-2] == -R_PosInf)
 				{
 				s[k-1] = s[k-2];
 				} else
@@ -445,16 +443,16 @@ void LogConCen::calcBaseDervs(){
 					s[k-1] = s[k-2] + dx[k-2]/db * (exp(b[k-1]) - exp(b[k-2]) ); 
 				}
 			}
-		if(x[k-1] == INFINITY)
+		if(x[k-1] == R_PosInf)
 			{
-			if(b[k-2] == -INFINITY)
+			if(b[k-2] == -R_PosInf)
 				{
 				s[k-1] = s[k-2];
 				} else
 				{
 				db = (b[k-2] - b[k-3]) / dx[k-3];//(x[k-2] - x[k-3]);
 				if(db >= 0)
-					s[k-1] = INFINITY;
+					s[k-1] = R_PosInf;
 				s[k-1] = s[k-2] - exp(b[k-2])/db;
 				}
 			}		
@@ -489,9 +487,9 @@ void LogConCen::calcBaseDervs(){
 			}
 		for(int i = 0; i < k; i ++ )
 			allBaseDervs[i] = allBaseDervs[i] - tot_rvec * (d_bl[i] + d_bu[i])/s[k-1];	
-		if(x[0] == -INFINITY)
+		if(x[0] == -R_PosInf)
 			allBaseDervs[0] = 0;
-		if(x[k-1] == -INFINITY)
+		if(x[k-1] == -R_PosInf)
 			allBaseDervs[k-1] = 0;
 }	
 
@@ -589,7 +587,7 @@ void LCBase::qpLimMatrix(QuadProgPP::Matrix<double> &Amat, QuadProgPP::Vector<do
 }
 
 void LCBase::recenterBeta(){
-	double maxVal = -INFINITY;
+	double maxVal = -R_PosInf;
 	int k = b.size();
 	for(int i = 0; i < k; i++)
 		maxVal = max(maxVal, b[i]);
@@ -605,8 +603,8 @@ void LCBase::makePropDist(){
 //	s.resize(k);
 	s[0] = 0;
 //	double der;
-	if(x[0] > -INFINITY){
-		if(b[1] == -INFINITY | b[0] == -INFINITY){
+	if(x[0] > -R_PosInf){
+		if(b[1] == -R_PosInf || b[0] == -R_PosInf){
 				s[1] = s[0];
 			} else {
 //			dx = x[1] - x[0];
@@ -617,8 +615,8 @@ void LCBase::makePropDist(){
 				s[1] = dx[0]/db * (exp(b[1]) - exp(b[0]) ); 
 		}
 	}
-	if(x[0] == -INFINITY){
-		if(b[1] == -INFINITY){
+	if(x[0] == -R_PosInf){
+		if(b[1] == -R_PosInf){
 			s[1] = 0;
 		} else {
 			db = (b[2] - b[1]) / dx[1];
@@ -626,7 +624,7 @@ void LCBase::makePropDist(){
 			}
 		}
 	for(int i = 1; i < k-2; i++){
-		if(b[i+1] == -INFINITY | b[i] == -INFINITY){
+		if(b[i+1] == -R_PosInf || b[i] == -R_PosInf){
 			s[i+1] = s[i];
 			continue;
 		} 
@@ -637,8 +635,8 @@ void LCBase::makePropDist(){
 		else			
 			s[i+1] = s[i] + dx[i]/db * (exp(b[i+1]) - exp(b[i]) ); 				
 		}
-	if(x[k-1] < INFINITY){
-		if(b[k-1] == -INFINITY | b[k-2] == -INFINITY){
+	if(x[k-1] < R_PosInf){
+		if(b[k-1] == -R_PosInf || b[k-2] == -R_PosInf){
 			s[k-1] = s[k-2];
 			} 
 		else{
@@ -650,8 +648,8 @@ void LCBase::makePropDist(){
 				s[k-1] = s[k-2] + dx[k-2]/db * (exp(b[k-1]) - exp(b[k-2]) ); 
 			}
 		}
-	if(x[k-1] == INFINITY){
-		if(b[k-2] == -INFINITY){
+	if(x[k-1] == R_PosInf){
+		if(b[k-2] == -R_PosInf){
 			s[k-1] = s[k-2];
 			}	 
 		else {
@@ -716,9 +714,9 @@ void LogConCen::baseDervs2ActDervs() {
 	allActDervs[k_last] = l_sum + allBaseDervs[k_last];
 	
 	
-	if(x[0] == -INFINITY)
+	if(x[0] == -R_PosInf)
 		allActDervs[0] = 0;
-	if(x[k-1] == INFINITY)
+	if(x[k-1] == R_PosInf)
 		allActDervs[k-1] = 0;
 }
 

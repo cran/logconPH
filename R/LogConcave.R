@@ -248,6 +248,8 @@ lines_LCObject <- function(x, y, ...){
 }
 
 plot_LCPHObject <- function(x, covars, funtype = "surv", ...){
+  if(any(is.na(covars)))
+    stop('valid covars argument required for CoxPH model')  
   fit <- x
   x <- fit$x
   x <- x[x != -Inf & x!= Inf]
@@ -280,6 +282,8 @@ plot_LCPHObject <- function(x, covars, funtype = "surv", ...){
   plot(grid, y, xlab = xlab, ylab = ylab, type = 'l', ... )
 }
 lines_LCPHObject <- function(x, funtype = "surv", covars, ...){
+  if(any(is.na(covars)))
+    stop('valid covars argument required for CoxPH model')
   fit <- x
   x <- fit$x
   x <- x[x != -Inf & x!= Inf]

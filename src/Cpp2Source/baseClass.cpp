@@ -72,9 +72,9 @@ void actSetBase::move_act_b(int index, double h) {
 	b[index] = b[index] + h;
 	int ind_l = -1;
 	int ind_r = -1;
-	double leftSlp = INFINITY;
-	double rightSlp = -INFINITY;
-	if(a_k == 2 & index == actIndex[0])
+	double leftSlp = R_PosInf;
+	double rightSlp = -R_PosInf;
+	if(a_k == 2 && index == actIndex[0])
 		{
 		leftSlp = (b[actIndex[1]] - b[actIndex[0]]) / (x[actIndex[1]] - x[actIndex[0]]);
 		for(int i = actIndex[1]; i >= actIndex[0]; i--)
@@ -82,7 +82,7 @@ void actSetBase::move_act_b(int index, double h) {
 		return;
 		}
 	
-	if(a_k == 2 & index == actIndex[1])
+	if(a_k == 2 && index == actIndex[1])
 		{
 		leftSlp = (b[actIndex[1] ] - b[actIndex[0]]) / (x[actIndex[1]] - x[actIndex[0]]);
 		for(int i = actIndex[0]; i <= actIndex[1]; i ++)		
@@ -101,7 +101,7 @@ void actSetBase::move_act_b(int index, double h) {
 				break;
 				}
 			}
-		if(ind_l < index & ind_l > -1)
+		if(ind_l < index && ind_l > -1)
 			{
 			leftSlp = (b[index] - b[ind_l])/(x[index] - x[ind_l]);
 			
@@ -231,7 +231,7 @@ void actSetBase::moveX(int index, double h){
 		return;
 	}
 	int ak = getAK();
-	if(index == actIndex[0] | index == actIndex[ak-1]){
+	if(index == actIndex[0] || index == actIndex[ak-1]){
 	//	R::Rprintf("Attempting to move endpoints \n");
 		return;
 	}
@@ -245,10 +245,10 @@ void actSetBase::moveX(int index, double h){
 	if(isActive == false){
 		return;
 	}
-	if(h > x[index+1] - x[index] | h < x[index-1] - x[index]){
+	if(h > x[index+1] - x[index] || h < x[index-1] - x[index]){
 		return;
 	}
-	if(h < x[index+1] - x[index] & h > x[index-1] - x[index]) {
+	if(h < x[index+1] - x[index] && h > x[index-1] - x[index]) {
 		x[index] = x[index] + h;
 		move_act_b(index, 0);
 		return;
@@ -318,12 +318,12 @@ vector<double> actSetBase::dervMoveX(int index){
 
 void actSetBase::updateXs(){
 	for(int i = 1; i < getAK()- 1; i++){
-		if(i < getAK() - 1 & actIndex[i] % 2 == 1)
+		if(i < getAK() - 1 && actIndex[i] % 2 == 1)
 			updateX(i);
 	}
 	int ai;
 	for(int i = 1; i < getAK() - 1; i++){
-		if(i < getAK() - 1 & actIndex[i] % 2 == 1){
+		if(i < getAK() - 1 && actIndex[i] % 2 == 1){
 			ai = actIndex[i];
 			if(x[ai] - x[ai -1] < pow(10.0, -8.0) ){
 				x[ai] = (x[ai+1] + x[ai-1])/2;
@@ -357,7 +357,7 @@ void actSetBase::updateX(int a_index){
 	double llk_new;
 	dervs[1] = dervs[2];
 	dervs.resize(2);
-	if(Hess[0][0] < 0 & Hess[1][1] < 0 & Hess[0][0] * Hess[1][1] > Hess[1][0]*Hess[0][1]){
+	if(Hess[0][0] < 0 && Hess[1][1] < 0 && Hess[0][0] * Hess[1][1] > Hess[1][0]*Hess[0][1]){
 		cur_Err = max(cur_Err, abs(dervs[0]) );
 		double det = Hess[0][0] * Hess[1][1] - Hess[1][0] * Hess[0][1];
 		QuadProgPP::Matrix<double> InvHess(2,2);
@@ -368,11 +368,12 @@ void actSetBase::updateX(int a_index){
 		vector<double> propVec(2);
 		propVec[0] = -(dervs[0] * InvHess[0][0] + dervs[1] * InvHess[1][0]);	// prop step for b
 		propVec[1] = -(dervs[0] * InvHess[0][1] + dervs[1] * InvHess[1][1]);	// prop step for x
-		double scale;
+		double scale = 0;
 		if(propVec[1] > 0)
 			scale = (x[index+1] - x[index])/propVec[1] * 4/5;
-		if(propVec[1] < 0)
+	 	if(propVec[1] < 0)
 			scale = abs((x[index-1] - x[index])/propVec[1] * 4/5);
+		
 		if(scale < 1){
 			propVec[0] = propVec[0]*scale;
 			propVec[1] = propVec[1]*scale;
@@ -387,11 +388,11 @@ void actSetBase::updateX(int a_index){
 		moveX(index, propVec[1]);
 		
 		llk_new = llk();
-		if( (llk_new < llk_old) | (!local3OK(a_index)) ){
+		if( (llk_new < llk_old) || (!local3OK(a_index)) ){
 			propVec[0] = -propVec[0]/2;
 			propVec[1] = -propVec[1]/2;
 			int it = 0;
-			while( (it <5 & llk_new < llk_old) | !local3OK(a_index) ){
+			while( (it <5 && llk_new < llk_old) || !local3OK(a_index) ){
 				it = it + 1;
 				move_act_b(index, propVec[0]);
 				moveX(index, propVec[1]);
@@ -399,7 +400,7 @@ void actSetBase::updateX(int a_index){
 				propVec[1] = propVec[1]/2;
 				llk_new = llk();
 			}
-			if( (llk_new < llk_old) | (!local3OK(a_index)) ){
+			if( (llk_new < llk_old) || (!local3OK(a_index)) ){
 				move_act_b(index, propVec[0] * 2);
 				moveX(index, propVec[1] * 2);
 			}
@@ -415,7 +416,7 @@ void actSetBase::updateX(int a_index){
 		if( (llk_new < llk_old) || !local3OK(a_index)){
 			delta = -delta/2;
 			int it = 0;
-			while( (it < 5 & llk_new < llk_old) | !local3OK(a_index)){
+			while( (it < 5 && llk_new < llk_old) || !local3OK(a_index)){
 				moveX(index, delta);
 				delta = delta/2;
 				llk_new = llk();
@@ -425,7 +426,7 @@ void actSetBase::updateX(int a_index){
 			}
 		}
 		if(x[index]-x[index - 1] < 0.0001){
-			if(b[index-1] == -INFINITY)
+			if(b[index-1] == -R_PosInf)
 				b[index-1] = b[index];
 			addActive(index-1);
 			removeActive(index);
@@ -433,7 +434,7 @@ void actSetBase::updateX(int a_index){
 			b[index] = (b[index-1] + b[index+1])/2;
 		}
 		if(x[index+1]-x[index] < 0.0001){
-			if(b[index+1] == -INFINITY)
+			if(b[index+1] == -R_PosInf)
 				b[index+1] = b[index];
 			addActive(index+1);
 			removeActive(index);
@@ -498,7 +499,8 @@ void actSetBase::VEMstep(){
 //		update1Var(updateIndex);
 
 	vector<int> points = findMaxIntError();
-	for(int i = 0; i < points.size();i++){
+	int pointsSize = points.size();
+	for(int i = 0; i < pointsSize;i++){
 		if(points[i]  > 0)
 			update1Var(points[i]);
 	}
@@ -542,7 +544,8 @@ void actSetBase::ICMstep(){
 			d1[i] = -currentDervs[0];
 			if(currentDervs[1] >= 0){
 				vector<int> curInds = actIndex;
-				for(int j = 0; j < curInds.size(); j++){
+				int indSize = curInds.size();
+				for(int j = 0; j < indSize; j++){
 					update1Var(curInds[j]);
 //					checkAllActive();
 					}
@@ -559,7 +562,7 @@ void actSetBase::ICMstep(){
 		}	
 		qpLimMatrix(Amat, conVec);	
 		double QP_result = QuadProgPP::solve_quadprog(ParHess, d1, blankMat, blankEqs, Amat, conVec, propStep);	
-		if(QP_result == -INFINITY){
+		if(QP_result == -R_PosInf){
 		//	R::Rprintf("Warning: no feasible solution to QP problem! Skipping ICM step\n");
 			return;
 		}	
@@ -581,7 +584,7 @@ void actSetBase::ICMstep(){
 				for(int i = 0; i < ak; i++)
 					propStep[i] = propStep[i] * -0.5;
 				int it = 0;
-				while(str_llk > new_llk & it < 15){
+				while(str_llk > new_llk && it < 15){
 					it++;
 					for(int i = 0; i < ak; i++){
 						move_act_b(actIndex[i], propStep[i]);
@@ -602,7 +605,8 @@ void actSetBase::ICMstep(){
 				move_act_b(actIndex[i], -propStep[i]);
 		}
 		vector<int> curInds = actIndex;
-		for(int i = 0; i < curInds.size(); i++){
+		int curIndSize = curInds.size();
+		for(int i = 0; i < curIndSize; i++){
 			update1Var(curInds[i]);
 			checkAllActive();
 		}

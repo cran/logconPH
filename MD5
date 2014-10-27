@@ -1,4 +1,4 @@
-48f5c81e3729dc5904312a425aeec1a4 *DESCRIPTION
+8eb9400d78c62b1f97c75394ab43b11a *DESCRIPTION
 5fbbd21fea9de2b218d0d33e0cb53a61 *NAMESPACE
 023503c90b4cbd2ca1e1b34b81587d2b *R/LogConcave.R
 df82a272d6dc774fb4d7b49465d918ec *man/dLC.Rd
@@ -16,5 +16,5 @@ abdb1b6e14895f55d96c7a7fe70d803e *src/Cpp2Source/Array.hh
 f0d28bf61260e4114476a77a177d5dca *src/Cpp2Source/QuadProg++.hh
 ce7a3b60103f3834059b77a59b31812e *src/Cpp2Source/baseClass.cpp
 83de38a720957a4463445741f3abe173 *src/Cpp2Source/baseClass.h
-a285c15ed6959d41b5a9291915f1bce5 *src/Cpp2Source/logconcave.cpp
+eb5871a832b4b288af366801057b4e3c *src/Cpp2Source/logconcave.cpp
 8a85a9294b2244caa614733102d9324c *src/logconPH.cpp

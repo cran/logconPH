@@ -30,14 +30,14 @@ Uses a sequential quadratic programming algorithm, paired with a univariate
   qLC(0.5, fit)      				
   # Estimates the median
 
-  data(menodata)
-  # source a current status dataset. This is a 2423 x 2 matrix
+  simData <- sim_Censored(n = 400)
+  # Simulates current status data
   
-  fit = logconcave(menodata)
+  fit = logconcave(simData)
   # Fits a log concave estimator to an interval censored sample
 
-  pLC(50, fit)
-  # Estimates the cdf at t = 50
+  pLC(0.5, fit)
+  # Estimates the cdf at t = 0.5
   
   plotLC(fit,  'surv')
   # Plots the estimated survival function.

@@ -35,19 +35,19 @@ Semi- and Non-parametric Methods for Interval Censored
   fit = logconcave(rnorm(500) )
   # Fits a log concave estimator to an uncensored sample
     
-  qLC(0.5, fit)    					
+  qLC(0.5, fit)      				
   # Estimates the median
 
-  data(menodata)
-  # source a current status dataset. This is a 2423 x 2 matrix
+  simData <- sim_Censored(n = 400)
+  # Simulates current status data
   
-  fit = logconcave(menodata)
+  fit = logconcave(simData)
   # Fits a log concave estimator to an interval censored sample
 
-  pLC(50, fit)
-  # Estimates the cdf at t = 50
+  pLC(0.5, fit)
+  # Estimates the cdf at t = 0.5
   
-  plotLC(fit, 'surv')
+  plotLC(fit,  'surv')
   # Plots the estimated survival function.
   # Options for second argument are 'pdf', 'cdf' and 'surv'
 
@@ -58,8 +58,8 @@ Semi- and Non-parametric Methods for Interval Censored
   # Fits a Cox-PH model with a logconcave baseline distribution
   
   plotLC(fit, covars = c(0,0) )
-  # Plots the baseline survival function
-
+  # Plots the estimated baseline survival function
+  
   linesLC(fit, covars = c(1,1), col = 'red')
   # Plots the estimated survival function with x1 = 1, x2 = 1
 }

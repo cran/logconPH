@@ -31,23 +31,42 @@ extern "C" SEXP uniVarLCCens(SEXP R_L, SEXP R_R, SEXP R_x,
 	LogConCen optObj(0, x, b, cL, cR, actInds, cRepVec, c_move_x);
 
 
-	int max_it = 500;
-	int it = 0;
+	int inner_it = 0;
+	int outer_it = 0;
+	int max_inner_its = 5;
+	int max_outer_its = 1000;
+	
+	vector<double> old_b(k);
+	double tol_m = pow(10, -5);
+	double outer_tol = pow(10.0, -5);
+	double inner_tol = pow(10.0, -5);
+	double inner_llk;
+	double inner_error;
+	double outer_error = outer_tol + 1;
 	double tol = pow(10.0, -10.0);
-	double oldLike = R_NegInf;
+//	double oldLike = R_NegInf;
 	double Err = tol + 1;
 	double newLike = 0;
 	bool startMoveX = false;
 	
-	while(it < max_it && Err > tol){
-		it++;		
+
+	while( outer_it < max_outer_its && outer_error > outer_tol){
+		old_b = optObj.b;
+		outer_it++;
+		inner_llk = optObj.llk();
 		optObj.VEMstep();
-		
-		optObj.ICMstep();		
-		
-		optObj.recenterBeta();
-			
-		optObj.checkEnds();
+		inner_error = inner_tol + 1;
+		inner_it = 0;
+		while(inner_it < max_inner_its && inner_error > inner_tol){
+			inner_it++;
+			optObj.ICMstep();
+			optObj.checkEnds();			
+			inner_error = optObj.llk() - inner_llk;
+			inner_llk = inner_llk + inner_error;	
+			if(inner_error != inner_error)
+				break;
+		}
+
 
 		if(startMoveX && c_move_x){
 			for(int i = 1; i < optObj.getAK()- 1; i++){
@@ -57,17 +76,62 @@ extern "C" SEXP uniVarLCCens(SEXP R_L, SEXP R_R, SEXP R_x,
 		}
 			
 		newLike = optObj.llk();
-		Err = newLike - oldLike;
-		oldLike = newLike;
-		if((Err < tol) && (!startMoveX)){
+		
+		outer_error = 0;
+		for(int i = 0; i < k; i++){
+			if(old_b[i] > R_NegInf){
+				outer_error = max(abs(old_b[i] - optObj.b[i]), outer_error);
+			}
+		}
+		
+		//outer_error = newLike - oldLike;
+		//oldLike = newLike;
+
+		optObj.recenterBeta();		
+		optObj.checkEnds();
+
+		if((Err < tol_m) && (!startMoveX) && c_move_x){
 			startMoveX = true;
 			Err = tol + 1;
 			}
-	}
+//		optObj.VEMstep();
+/*	This was in place because occasionally (<1%) the old stopping criterion would 
+	stop at when the tail active points had positive 2nd derivatives extremely close 0
+	This remedy that, but we felt the algorithm was overly complicated, so we switched to 
+	a simpler stopping criterion
+	
+	if(optObj.cur_Err < 0.0001){
+			vector<double> ders(2);
+			optObj.recenterBeta();
+			optObj.checkEnds();
+			bool allOK = true;
+			for(int i = 0; i < optObj.getAK(); i++){
+				ders = optObj.numericDervs(optObj.actIndex[i]);
+				if(ders[1] > 0){
+				//	Rprintf("Note: 2nd derivative positive, all other criterion met\n");
+					allOK = false;
+					int it = 0;
+					while(ders[1] > 0 && it < 10){
+							it++;
+							if( i < optObj.getAK())
+								optObj.update1Var(optObj.actIndex[i]);
+							ders = optObj.numericDervs(optObj.actIndex[i]);
+						}
+					}	
+				}
+				if(allOK)
+					break;
+
+			}	*/
+		}		
+	
+	
+	optObj.endTol = 0;
+	optObj.checkEnds();
 	optObj.makePropDist();
 
 	ak = optObj.getAK();
-	SEXP output = PROTECT(allocVector(VECSXP, 3) );
+	SEXP output = PROTECT(allocVector(VECSXP, 4) );
 	SEXP x_out = PROTECT(allocVector(REALSXP, ak) );
 	SEXP b_out = PROTECT(allocVector(REALSXP, ak) );
 	SEXP llk_out = PROTECT(allocVector(REALSXP, 1) );
@@ -79,6 +143,7 @@ extern "C" SEXP uniVarLCCens(SEXP R_L, SEXP R_R, SEXP R_x,
 	SET_VECTOR_ELT(output, 0, x_out);
 	SET_VECTOR_ELT(output, 1, b_out);
 	SET_VECTOR_ELT(output, 2, llk_out);
+	SET_VECTOR_ELT(output, 3, ScalarInteger(outer_it) );
 	UNPROTECT(4);
 	return(output);
 }
@@ -237,13 +302,16 @@ void LCBase::checkEnds(){
 				int moveInd = actIndex[0] ;
 				addActive(moveInd+1);
 				removeActive(moveInd);
-	//			moveInd++;
+				cur_llk = new_llk;
 			} else {
 			b[actIndex[0]] = old_b;		
 			exit_loop = true;
 			}
 		}
 	}
+	
+	update1Var(actIndex[0]);
+	cur_llk = llk();
 	
 	it = 0;
 	exit_loop = false;
@@ -258,12 +326,14 @@ void LCBase::checkEnds(){
 			if(new_llk > (cur_llk - limit) ){
 				addActive(endIndex-1);
 				removeActive(endIndex);
+				cur_llk = new_llk;
 			} else {
 			b[endIndex] = old_b;
 			exit_loop = true;
 			}
 		}
 	}
+	update1Var(actIndex[getAK()-1]);
 }
 
 vector<double> LCBase::getLimits(int index){
@@ -716,3 +786,98 @@ void LogConCen::calcDervVec(){
 	calcBaseDervs();
 	baseDervs2ActDervs();
 }
+
+
+
+extern "C" SEXP p_lc(SEXP R_x, SEXP R_fit_x, SEXP R_fit_phi)  /* fits estimated cdf, but requires log concave fit, not inverse convex! log concave fit found from logcondens package */
+	{
+	int k = LENGTH(R_fit_x);
+	double x = REAL(R_x)[0];
+	double* fit_x = REAL(R_fit_x);
+	double* fit_phi = REAL(R_fit_phi);	/* calling this fit_dens is not correct, it's really log dens */
+	
+	SEXP output;
+	PROTECT(output = allocVector(REALSXP, 1));
+	
+	if(x <= fit_x[0]){
+		REAL(output)[0] = 0;
+		UNPROTECT(1);
+		return(output);
+		}
+	if(x >= fit_x[k-1]){
+		REAL(output)[0] = 1;
+		UNPROTECT(1);
+		return(output);
+		}
+	int mark = 0;
+	double dx= 0;
+	double db = 0;
+	double raw_p = 0;
+	double tot_p = 0;
+	int it = 0;
+	for(int i = 0; i < (k - 1) ; i++)
+		{
+		db = fit_phi[i+1] - fit_phi[i];
+		dx = fit_x[i + 1] - fit_x[i];
+		if(x <= fit_x[i+1] & x > fit_x[i])
+			{
+			raw_p = tot_p;
+			mark = it;
+			}
+		if(db == 0)
+			tot_p = tot_p + exp(fit_phi[i]) * dx;
+		if(db != 0)
+			tot_p = tot_p + dx/db * (exp(fit_phi[i+1]) - exp(fit_phi[i]));
+		it++;
+		}
+	double b_new = fit_phi[mark] + (x - fit_x[mark])  * (fit_phi[mark + 1] - fit_phi[mark]) / (fit_x[mark+1] - fit_x[mark]);
+	dx = x - fit_x[mark];
+	db = b_new - fit_phi[mark];
+	if(db == 0)
+		raw_p = raw_p + exp(b_new) * dx;
+	if(db != 0)
+		raw_p = raw_p + dx/db * (exp(b_new) - exp(fit_phi[mark]) );
+	REAL(output)[0] = raw_p / tot_p;
+	UNPROTECT(1);
+	return(output);
+	}
+
+extern "C" SEXP d_lc(SEXP R_x, SEXP R_fit_x, SEXP R_fit_phi)
+	{
+	int k = LENGTH(R_fit_x);
+	double x = REAL(R_x)[0];
+	double* fit_x = REAL(R_fit_x);
+	double* fit_phi = REAL(R_fit_phi);
+	
+	SEXP output;
+	PROTECT(output = allocVector(REALSXP, 1));
+
+	if(x <= fit_x[0]){
+		REAL(output)[0]= 0;
+		UNPROTECT(1);
+		return(output);
+	}
+	if(x >= fit_x[k-1]){
+		REAL(output)[0]= 0;
+		UNPROTECT(1);
+		return(output);
+	}
+	double dx = 0;
+	double db = 0;
+	double g = 0;
+	for(int i = 0; i < (k-1); i++)
+		{
+		if(x <= fit_x[i+1])
+			{
+			dx = fit_x[i+1] - fit_x[i];
+			db = fit_phi[i+1] - fit_phi[i];
+			g = fit_phi[i] + db/dx * (x - fit_x[i]);
+			REAL(output)[0] = exp(g);
+			UNPROTECT(1);
+			return( output );
+			}
+		}
+	Rprintf("Warning: invalid call to d_lc\n");
+	UNPROTECT(1);
+	return(R_NilValue);
+	}		

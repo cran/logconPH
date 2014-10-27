@@ -33,10 +33,12 @@ logconcave = function(times, covariates, aug = TRUE){
     return(output)
   }
   
-  if(is.matrix(times))
-    int.Data = times
-  else
-    stop("Data type not recognized")	
+#  if(is.matrix(times))
+   int.Data = as.matrix(times)
+   
+   if(ncol(int.Data) != 2)
+   	stop("times should either be a vector of length n or be of dimensions n x 2")
+    
   l = int.Data[,1]
   u = int.Data[,2]
   if(max(l) <= min(u) )
@@ -107,6 +109,16 @@ simPH_Censored <- function(n = 100, b1 = 0.5, b2 = -0.5, shape = 2){
   return(output)
 }
 
+sim_Censored <- function(n = 100){
+	l = rep(0, n)
+	u = rep(1, n)
+	time = rbeta(n, 2, 2)
+	cTime = runif(n)
+	isLeftCens <- time < cTime
+	u[isLeftCens] <- cTime[isLeftCens]
+	l[!isLeftCens] <- cTime[!isLeftCens]
+	return(cbind(l, u))
+}
 
 
 logconcave.univariate = function(data){
@@ -119,18 +131,17 @@ logconcave.univariate = function(data){
 			stop("Error: non finite values supplied")
 		b = rep(0, length(x))
 		output = .Call('uniVarLCCens', inds, inds, x, b, repVec, as.integer( c(1, length(x) ) ), FALSE )
-		names(output) <- c("x", "beta", "llk")
+		names(output) <- c("x", "beta", "llk", 'iterations')
 		output[['dens']] <- exp(output$beta)
 		class(output) <- "LCObject"
 		return(output)
 	}
 
-if(is.matrix(data))
-	int.Data = data
-else
-	stop("Data type not recognized")	
-l = int.Data[,1]
-u = int.Data[,2]
+	int.Data = as.matrix(data)
+	if(ncol(data) != 2)
+		stop("times should either be a matrix of length n or be of dimensions n x 2")
+	l = int.Data[,1]
+	u = int.Data[,2]
 	
 
 	
@@ -162,7 +173,7 @@ u = int.Data[,2]
 	actInds = unique(actInds)
 	inds <- make.inds(x, l,u)
 	output <- .Call('uniVarLCCens', inds[,'l.inds'], inds[,'u.inds'], x, b, repVec, as.integer(actInds) , TRUE)
-	names(output) <- c("x", "beta", "llk")
+	names(output) <- c("x", "beta", "llk", 'iterations')
 	output[['dens']] <- exp(output$beta)
 	class(output) <- "LCObject"
 	return(output)
@@ -321,6 +332,30 @@ lines_LCPHObject <- function(x, funtype = "surv", covars, ...){
   lines(grid, y, xlab = xlab, ylab = ylab, ... )
 }
 
+makeNonCS_RepVec <- function(l, u){
+	ord = order(l)
+	sort_L = l[ord]
+	sort_R = u[ord]
+	out_l = NA
+	out_r = NA
+	out_rep = NA
+	count = 0
+	n = length(sort_L)
+	for(i in 1:n){
+		l_val = sort_L[i]
+		if(!is.na(l_val)){
+			count = count + 1
+			r_val = sort_R[i]
+			areEqual = which(sort_L[i:n] == l_val & sort_R[i:n] == r_val)
+			out_l[count] <- l_val
+			out_r[count] <- r_val
+			out_rep[count] <- length(areEqual)
+			sort_L[i + areEqual -1 ] <- NA
+		}
+	}
+	return(list(out_l, out_r, out_rep))
+}
+
 
 rep.vec <- function(cs.data)
 	{
@@ -337,8 +372,8 @@ rep.vec <- function(cs.data)
 	right <- sort(right)
 	if(length(left) + length(right) != n)
 		{
-		rep.vec <- rep(1, n)
-		return(cbind(l, u, rep.vec) ) 
+		rep.vec.output <- makeNonCS_RepVec(l, u)
+		return(cbind(rep.vec.output[[1]], rep.vec.output[[2]], rep.vec.output[[3]], row.names = NULL) ) 
 		}
 	rep.lft <- table(left)
 	val.lft <- unique(left)
@@ -402,32 +437,32 @@ dLC = function(x, fit, covars)
 	phi = log(fit$dens)
 	x.dens = rep(0, length(x) ) 
 	for(i in 1:length(x) ) 
-		{
-		if(x[i] >= min(dom) & x[i] <= max(dom) & x[i] >-Inf & x[i] < Inf ) 
-			{
-			l.ind = max(which(dom <= x[i]) )
-			r.ind = min(which(dom >= x[i]) )
-			if(l.ind == r.ind)
-				x.dens[i] = exp(phi[l.ind])
-			else if(phi[l.ind] > -Inf & phi[r.ind] > -Inf)
-				{
-				est.phi = phi[l.ind] + (phi[r.ind] - phi[l.ind])/(dom[r.ind] - dom[l.ind]) * (x[i] - dom[l.ind])
-				x.dens[i] = exp(est.phi)
-				}
-			else if(phi[l.ind] == -Inf)
-				{
-				slp = (phi[2] - phi[3])/(dom[3] - dom[2])
-				est.phi = phi[2] + slp * (dom[2] - x[i])
-				x.dens[i] = exp(est.phi)
-				}
-			else if(phi[r.ind] == -Inf)
-				{
-				slp = (phi[l.ind] - phi[l.ind-1])/(x[l.ind] - x[l.ind-1])
-				est.phi = phi[l.ind] + slp *(x[i] - dom[l.ind])
-				x.dens[i] = exp(est.phi)
-				}
-			}
-		}
+		x.dens[i] = .Call('d_lc', as.numeric(x[i]), as.numeric(dom), as.numeric(phi) )
+#		{
+#			{
+#			l.ind = max(which(dom <= x[i]) )
+#			r.ind = min(which(dom >= x[i]) )
+#			if(l.ind == r.ind)
+#				x.dens[i] = exp(phi[l.ind])
+#			else if(phi[l.ind] > -Inf & phi[r.ind] > -Inf)
+#				{
+#				est.phi = phi[l.ind] + (phi[r.ind] - phi[l.ind])/(dom[r.ind] - dom[l.ind]) * (x[i] - dom[l.ind])
+#				x.dens[i] = exp(est.phi)
+#				}
+#			else if(phi[l.ind] == -Inf)
+#				{
+#				slp = (phi[2] - phi[3])/(dom[3] - dom[2])
+#				est.phi = phi[2] + slp * (dom[2] - x[i])
+#				x.dens[i] = exp(est.phi)
+#				}
+#			else if(phi[r.ind] == -Inf)
+#				{
+#				slp = (phi[l.ind] - phi[l.ind-1])/(x[l.ind] - x[l.ind-1])
+#				est.phi = phi[l.ind] + slp *(x[i] - dom[l.ind])
+#				x.dens[i] = exp(est.phi)
+#				}
+#			}
+#		}
   if(class(fit) == "LCPHObject"){
 #    covars <- as.matrix(covars)
     if(length(dim(covars)) < 2){
@@ -461,47 +496,48 @@ pLC = function(x, fit, covars)
 	dom = fit$x
 	phi = log(fit$dens)
 	x.p = rep(0, length(x) ) 
-	x.p[x >= max(dom)] <- 1
+#	x.p[x >= max(dom)] <- 1
 	for(i in 1:length(x) ) 
-		{
-		if(x[i] > min(dom) & x[i] < max(dom) & x[i] >-Inf & x[i] < Inf ) 
-			{
-			l.ind = max(which(dom <= x[i]) )
-			r.ind = min(which(dom >= x[i]) ) 
-			if(l.ind == r.ind)
-				{
-				p.est = 0
-				for(j in 1:(l.ind-1) )
-					p.est = p.est + exact.int(phi[j], phi[j+1], dom[j], dom[j+1])
-				x.p[i] = p.est
-				}
-			if(phi[l.ind] > -Inf & phi[r.ind] > -Inf)
-				{
-				est.phi = phi[l.ind] + (phi[r.ind] - phi[l.ind])/(dom[r.ind] - dom[l.ind]) * (x[i] - dom[l.ind])
-				p.est = 0
-				if(l.ind > 1)
-					{
-					for(j in 1:(l.ind-1) )
-						p.est = p.est + exact.int(phi[j], phi[j+1], dom[j], dom[j+1])
-					}
-				p.est = p.est + exact.int(phi[l.ind], est.phi, dom[l.ind], x[i])
-				x.p[i] = p.est
-				}
-			if(dom[l.ind] == -Inf)
-				{
-        cat('oops...there\'s an error in pLC. Email cianders@uci.edu\n')
-				}
-			if(dom[r.ind] == Inf)
-				{
-				slp = (phi[l.ind] - phi[l.ind-1])/(dom[l.ind] - dom[l.ind-1])
-				est.phi = phi[l.ind] + slp *(x[i] - dom[l.ind])
-				for(j in 1:(l.ind-1) )
-					p.est = p.est + exact.int(phi[j], phi[j+1], dom[j], dom[j+1])
-				p.est = p.est + exact.int(phi[l.ind], est.phi, dom[l.ind], x[i])
-				x.p[i] = p.est
-				}
-			}
-		}
+		x.p[i] = .Call('p_lc', as.numeric(x[i]), as.numeric(dom), as.numeric(phi) )
+#		{
+#		if(x[i] > min(dom) & x[i] < max(dom) & x[i] >-Inf & x[i] < Inf ) 
+#			{
+#			l.ind = max(which(dom <= x[i]) )
+#			r.ind = min(which(dom >= x[i]) ) 
+#			if(l.ind == r.ind)
+#				{
+#				p.est = 0
+#				for(j in 1:(l.ind-1) )
+#					p.est = p.est + exact.int(phi[j], phi[j+1], dom[j], dom[j+1])
+#				x.p[i] = p.est
+#				}
+#			if(phi[l.ind] > -Inf & phi[r.ind] > -Inf)
+#				{
+#				est.phi = phi[l.ind] + (phi[r.ind] - phi[l.ind])/(dom[r.ind] - dom[l.ind]) * (x[i] - dom[l.ind])
+#				p.est = 0
+#				if(l.ind > 1)
+#					{
+#					for(j in 1:(l.ind-1) )
+#						p.est = p.est + exact.int(phi[j], phi[j+1], dom[j], dom[j+1])
+#					}
+#				p.est = p.est + exact.int(phi[l.ind], est.phi, dom[l.ind], x[i])
+#				x.p[i] = p.est
+#				}
+#			if(dom[l.ind] == -Inf)
+#				{
+#        cat('oops...there\'s an error in pLC. Email cianders@uci.edu\n')
+#				}
+#			if(dom[r.ind] == Inf)
+#				{
+#				slp = (phi[l.ind] - phi[l.ind-1])/(dom[l.ind] - dom[l.ind-1])
+#				est.phi = phi[l.ind] + slp *(x[i] - dom[l.ind])
+#				for(j in 1:(l.ind-1) )
+#					p.est = p.est + exact.int(phi[j], phi[j+1], dom[j], dom[j+1])
+#				p.est = p.est + exact.int(phi[l.ind], est.phi, dom[l.ind], x[i])
+#				x.p[i] = p.est
+#				}
+#			}
+#		}
 	if(class(fit) == "LCPHObject"){
     if(length(dim(covars)) < 2){
       numCovars <- length(covars)[1]

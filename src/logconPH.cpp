@@ -70,13 +70,12 @@ extern "C" SEXP LC_CoxPH(SEXP R_L, SEXP R_R, SEXP R_x,
 		Rprintf("Number of covariates does not match number of observations\n");
 		return(R_NilValue);
 	}
-	
+
 	QuadProgPP::Matrix<double> Covars(cov_n,num_cov);
 	for(int i = 0; i < cov_n; i++){
 		for(int j = 0; j < num_cov; j++)
 			Covars[i][j] = REAL(covariates)[i + j*cov_n];
 	}
-
 	
 	int ak = LENGTH(R_actInds);
 	vector<int> actInds(ak);	
@@ -90,7 +89,6 @@ extern "C" SEXP LC_CoxPH(SEXP R_L, SEXP R_R, SEXP R_x,
 	LogConCenPH optObj(0, x, b, cL, cR, actInds, c_move_x, augl, augr, Covars, num_cov);
 
 
-
 	optObj.updateNu();
 
 	optObj.updateRegress();
@@ -99,7 +97,7 @@ extern "C" SEXP LC_CoxPH(SEXP R_L, SEXP R_R, SEXP R_x,
 	optObj.ICMstep();
 	
 //	double old_llk = R_NegInf;
-		
+	
 //	double new_llk = optObj.llk();
 	
 	int inner_it = 0;
@@ -115,6 +113,7 @@ extern "C" SEXP LC_CoxPH(SEXP R_L, SEXP R_R, SEXP R_x,
 	double inner_llk, outer_llk;
 	int loopcount = 0;
 	bool start_move_x = false;
+
 	while( (outer_it < max_outer_its)  && (loopcount < 2)){
 		outer_it++;
 		outer_llk = optObj.llk();
@@ -293,7 +292,7 @@ double LogConCenPH::llk(){
 	}
 	scaleValue = (1 - augLeft - augRight) / s[k-1];
 	double logScale = log(scaleValue);
-			
+	
 	//Should be scaleValue * b[i] for uncensored, I think??
 
 	for(int i = 0; i < k; i++)
@@ -367,7 +366,6 @@ double LogConCenPH::nullk(){
 	}
 	return (log_sum);
 }
-
 
 void LogConCenPH::calcDervVec(){
 /*	int k = x.size();
@@ -561,6 +559,7 @@ double LogConCenPH::fastBasellk(){
 	for(int i = 0; i < k; i++)
 		s[i] = s[i] * scaleValue + augLeft;		
 		
+	
 	int n_row = Lindex.size();
 //	double tot_rvec = 0;
 	double log_sum = 0;

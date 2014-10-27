@@ -1,5 +1,6 @@
 useDynLib(logconPH)
 #exportPattern("^[[:alpha:]]+")
+export(sim_Censored)
 export("logconcave")
 export("dLC")
 export("pLC")

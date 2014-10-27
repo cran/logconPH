@@ -14,17 +14,10 @@ double min(double x, double y){
 	return(y);
 }
 
-bool checkQPconstraints(QuadProgPP::Matrix<double> Amat, QuadProgPP::Vector<double> conVec, QuadProgPP::Vector<double> propVec){
-	int I = Amat.ncols();
-	int J = Amat.nrows();
-	if(I != conVec.size()){
-	//	Rprintf( "Problem with size of conVec!\n");
-		return(false);
-	}
-	if(J != propVec.size()){
-	//	Rprintf("Problem with size of propVec!\n");
-		return(false);
-	}
+bool checkQPconstraints(QuadProgPP::Matrix<double> Amat, QuadProgPP::Vector<double> conVec, 
+						QuadProgPP::Vector<double> propVec){
+	int I = conVec.size();
+	int J = propVec.size();
 	double tot;
 	for(int i = 0; i < I; i++){
 		tot = 0;
@@ -380,11 +373,12 @@ void actSetBase::updateX(int a_index){
 		}
 		
 		if(propVec[0] != propVec[0]){
-			Rprintf("propVec[0] undefined. quiting updateX\n");
+//			Rprintf("propVec[0] undefined. quiting updateX\n");
 			return;
 		}
 		if(propVec[1] != propVec[1]){
-			Rprintf("propVec[1] undefined. quitting updateX\n");
+//			Rprintf("propVec[1] undefined. quitting updateX\n");
+			return;
 		}
 		move_act_b(index, propVec[0]);
 		moveX(index, propVec[1]);

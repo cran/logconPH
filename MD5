@@ -1,4 +1,4 @@
-bd036429d67ccdb6866c739a3943f1b6 *DESCRIPTION
+72b13f2b0f5ef4f232ea46ac968ec778 *DESCRIPTION
 63748910a06e60eabcc68b29f6a8a302 *NAMESPACE
 c8a18256e93be4aaceb2e07aa480b9be *R/LogConcave.R
 61f8fa1654e43754ab711f84217319be *data/menodata.rda
@@ -15,7 +15,7 @@ c9423bc7ec244ecbd2291fe9a963c97d *src/Cpp2Source/Array.cc
 abdb1b6e14895f55d96c7a7fe70d803e *src/Cpp2Source/Array.hh
 81a1a23a1d243a0df43ffe9ff4f134c6 *src/Cpp2Source/QuadProg++.cc
 f0d28bf61260e4114476a77a177d5dca *src/Cpp2Source/QuadProg++.hh
-b1d222f449978838f13ac41718f024b8 *src/Cpp2Source/baseClass.cpp
-dea226171cea0c6cedc65c5e5ba7ae36 *src/Cpp2Source/baseClass.h
+805ddbfe3a016925e404ce9e4d2326d1 *src/Cpp2Source/baseClass.cpp
+047ecae50b96a0d31afd987b4614f03d *src/Cpp2Source/baseClass.h
 cc27da718c9695f45cc1e59d60f94e02 *src/Cpp2Source/logconcave.cpp
 2ec6e7c27545520ceed33d09c4d49b11 *src/logconPH.cpp

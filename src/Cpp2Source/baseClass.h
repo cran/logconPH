@@ -1,24 +1,11 @@
 #include <iostream>
 #include <vector>
+#include "QuadProg++.cc"
 
 #include <R.h>
 #include <Rinternals.h>
 #include <R_ext/Arith.h>
 
-
-//#include "eigen/Eigen/Eigen"
-//#include <Eigen/LU>
-//#include<Eigen/Dense>
-//#include<Eigen/Core>
-//#include<Eigen/LU>
-//#ifndef R_NO_REMAP
-//#define R_NO_REMAP
-
-
-//#include "Array.hh"
-//#include "QuadProg++.hh"
-//#include "Array.cc"
-#include "QuadProg++.cc"
 
 
 
